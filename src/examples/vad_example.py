@@ -93,11 +93,12 @@ async def main_vad_example() -> None:
     print("TARS VAD Example - Phase 1")
     print("=" * 40)
     
-    # Audio configuration (same as your existing setup)
-    samplerate = 16000
-    blocksize = 1600
-    dtype = 'int16'
-    channels = 1
+    # Audio configuration (centralized)
+    from config import Config
+    samplerate = Config.AUDIO_SAMPLE_RATE
+    blocksize = Config.AUDIO_BLOCK_SIZE
+    dtype = Config.AUDIO_DTYPE
+    channels = Config.AUDIO_CHANNELS
 
     # Initialize Gemini service with VAD support
     gemini_service = GeminiService(api_key=str(api_key), enable_conversation_management=True)

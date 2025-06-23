@@ -9,13 +9,13 @@ This service encapsulates:
 - Configuration management
 - Extension points for function calling and multimodal features
 """
-
 import asyncio
 from typing import Any, AsyncGenerator, Optional, Callable
 from google import genai
 from google.genai import types
 
 from core.conversation_state import ConversationManager, ConversationState
+from config import Config
 
 
 class GeminiResponse:
@@ -57,14 +57,14 @@ class GeminiService:
     - Configuration
     """
     
-    def __init__(self, api_key: str, model: str = "gemini-live-2.5-flash-preview",
+    def __init__(self, api_key: str, model: str = Config.DEFAULT_MODEL,
                  enable_conversation_management: bool = False):
         """
         Initialize the Gemini service.
-        
+
         Args:
             api_key: Google API key for Gemini
-            model: Model name to use (default: gemini-live-2.5-flash-preview)
+            model: Model name to use (default: Config.DEFAULT_MODEL)
             enable_conversation_management: Enable conversation state management for VAD (default: False)
         """
         self.api_key = api_key
@@ -73,11 +73,11 @@ class GeminiService:
         self.session: Optional[Any] = None
         self._connection_manager: Optional[Any] = None
         self.audio_queue = asyncio.Queue()
-        
+
         # Conversation state management
         self.enable_conversation_management = enable_conversation_management
         self.conversation_manager = ConversationManager()
-        
+
         # Default configuration with VAD enabled
         self.config: Any = {
             "response_modalities": ["TEXT"],
@@ -85,12 +85,12 @@ class GeminiService:
             "realtime_input_config": {
                 "automatic_activity_detection": {
                     "disabled": False,
-                    "prefix_padding_ms": 50,
-                    "silence_duration_ms": 1500,  # 1.5 seconds for natural pauses
+                    "prefix_padding_ms": Config.VAD_PREFIX_PADDING_MS,
+                    "silence_duration_ms": Config.VAD_SILENCE_DURATION_MS,
                 }
             }
         }
-        
+
         # Extension points for future features
         self.function_registry = {}
         self.response_handlers = []
@@ -131,7 +131,7 @@ class GeminiService:
             raise RuntimeError("Session not started. Call start_session() first.")
             
         await self.session.send_realtime_input(
-            audio=types.Blob(data=audio_data, mime_type="audio/pcm;rate=16000")
+            audio=types.Blob(data=audio_data, mime_type=Config.AUDIO_MIME_TYPE)
         )
         
     async def send_image(self, image_data: bytes, mime_type: str = "image/jpeg") -> None:

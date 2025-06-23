@@ -49,10 +49,11 @@ async def main() -> None:
     print("Program started.")
 
     # Audio configuration
-    samplerate = 16000  # 16kHz sample rate
-    blocksize = 1600   # 100ms chunks
-    dtype = 'int16'     # 16-bit PCM
-    channels = 1       # Mono audio
+    from config import Config
+    samplerate = Config.AUDIO_SAMPLE_RATE
+    blocksize = Config.AUDIO_BLOCK_SIZE
+    dtype = Config.AUDIO_DTYPE
+    channels = Config.AUDIO_CHANNELS
 
     # Initialize Gemini service (api_key is guaranteed to be str at this point)
     gemini_service = GeminiService(api_key=str(api_key))
