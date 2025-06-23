@@ -6,6 +6,7 @@ import sounddevice as sd
 import numpy as np
 
 from services import GeminiService
+from config import get_default_config
 
 load_dotenv()
 
@@ -48,14 +49,17 @@ async def receive_and_print_responses(gemini_service: GeminiService) -> None:
 async def main() -> None:
     print("Program started.")
 
-    # Audio configuration
-    samplerate = 16000  # 16kHz sample rate
-    blocksize = 1600   # 100ms chunks
-    dtype = 'int16'     # 16-bit PCM
-    channels = 1       # Mono audio
+    # Audio configuration - using centralized config for consistency
+    # Note: You can also customize these via environment variables (e.g., TARS_AUDIO_SAMPLE_RATE=16000)
+    config = get_default_config()
+    samplerate = config.audio.sample_rate
+    blocksize = config.audio.block_size
+    dtype = config.audio.dtype
+    channels = config.audio.channels
 
-    # Initialize Gemini service (api_key is guaranteed to be str at this point)
-    gemini_service = GeminiService(api_key=str(api_key))
+    # Initialize Gemini service with centralized configuration
+    # Legacy API: gemini_service = GeminiService(api_key=str(api_key))  # Still works!
+    gemini_service = GeminiService(api_key=str(api_key), config=config)
 
     def audio_callback(indata, frames, time, status):
         """This function is called by sounddevice for each audio chunk."""

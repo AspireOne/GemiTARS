@@ -18,6 +18,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from services.gemini_service import GeminiService
 from core.conversation_state import ConversationState
+from config import get_default_config, load_config_from_env
 
 load_dotenv()
 
@@ -93,14 +94,21 @@ async def main_vad_example() -> None:
     print("TARS VAD Example - Phase 1")
     print("=" * 40)
     
-    # Audio configuration (same as your existing setup)
-    samplerate = 16000
-    blocksize = 1600
-    dtype = 'int16'
-    channels = 1
+    # Load configuration (includes environment variable overrides)
+    config = load_config_from_env()
+    
+    # Audio configuration from centralized config
+    samplerate = config.audio.sample_rate
+    blocksize = config.audio.block_size
+    dtype = config.audio.dtype
+    channels = config.audio.channels
 
-    # Initialize Gemini service with VAD support
-    gemini_service = GeminiService(api_key=str(api_key), enable_conversation_management=True)
+    # Initialize Gemini service with VAD support and centralized configuration
+    gemini_service = GeminiService(
+        api_key=str(api_key),
+        enable_conversation_management=True,
+        config=config
+    )
     
     def audio_callback(indata, frames, time, status):
         """Audio callback - let GeminiService handle conversation state logic."""
@@ -115,7 +123,7 @@ async def main_vad_example() -> None:
         
         # Start Gemini session
         async with gemini_service:
-            print("TARS: System initialized. Waiting for hotword...")
+            print(config.conversation.messages["system_initialized"])
             
             # Start concurrent tasks
             response_task = asyncio.create_task(handle_responses_with_vad(gemini_service))

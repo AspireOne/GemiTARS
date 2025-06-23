@@ -3,10 +3,10 @@ GeminiService: Handles all interactions with the Gemini Live API.
 
 This service encapsulates:
 - Client initialization and authentication
-- Session lifecycle management  
+- Session lifecycle management
 - Audio streaming to the API
 - Response processing and handling
-- Configuration management
+- Centralized configuration management
 - Extension points for function calling and multimodal features
 """
 
@@ -16,6 +16,7 @@ from google import genai
 from google.genai import types
 
 from core.conversation_state import ConversationManager, ConversationState
+from config import TARSConfig, get_default_config
 
 
 class GeminiResponse:
@@ -58,7 +59,7 @@ class GeminiService:
     """
     
     def __init__(self, api_key: str, model: str = "gemini-live-2.5-flash-preview",
-                 enable_conversation_management: bool = False):
+                 enable_conversation_management: bool = False, config: Optional[TARSConfig] = None):
         """
         Initialize the Gemini service.
         
@@ -66,9 +67,23 @@ class GeminiService:
             api_key: Google API key for Gemini
             model: Model name to use (default: gemini-live-2.5-flash-preview)
             enable_conversation_management: Enable conversation state management for VAD (default: False)
+            config: Optional TARS configuration object. If None, uses defaults with legacy parameter overrides.
         """
+        # Handle configuration - backwards compatibility with legacy parameters
+        if config is None:
+            # Create default config and override with legacy parameters
+            self.tars_config = get_default_config()
+            if model != "gemini-live-2.5-flash-preview":
+                self.tars_config.model.name = model
+        else:
+            self.tars_config = config
+            # Legacy model parameter takes precedence over config for backwards compatibility
+            if model != "gemini-live-2.5-flash-preview":
+                self.tars_config.model.name = model
+        
+        # Initialize client and session management
         self.api_key = api_key
-        self.model = model
+        self.model = self.tars_config.model.name  # Use model from config
         self.client = genai.Client(api_key=api_key)
         self.session: Optional[Any] = None
         self._connection_manager: Optional[Any] = None
@@ -76,20 +91,12 @@ class GeminiService:
         
         # Conversation state management
         self.enable_conversation_management = enable_conversation_management
-        self.conversation_manager = ConversationManager()
+        self.conversation_manager = ConversationManager(
+            conversation_timeout=self.tars_config.conversation.timeout_seconds
+        )
         
-        # Default configuration with VAD enabled
-        self.config: Any = {
-            "response_modalities": ["TEXT"],
-            "input_audio_transcription": {},
-            "realtime_input_config": {
-                "automatic_activity_detection": {
-                    "disabled": False,
-                    "prefix_padding_ms": 50,
-                    "silence_duration_ms": 1500,  # 1.5 seconds for natural pauses
-                }
-            }
-        }
+        # Generate Gemini API configuration from TARS config
+        self.config: Any = self.tars_config.get_gemini_config()
         
         # Extension points for future features
         self.function_registry = {}
@@ -125,13 +132,13 @@ class GeminiService:
         Send audio data to the Gemini API.
         
         Args:
-            audio_data: Raw audio bytes (PCM format, 16kHz, 16-bit)
+            audio_data: Raw audio bytes (PCM format configured in TARSConfig)
         """
         if not self.session:
             raise RuntimeError("Session not started. Call start_session() first.")
             
         await self.session.send_realtime_input(
-            audio=types.Blob(data=audio_data, mime_type="audio/pcm;rate=16000")
+            audio=types.Blob(data=audio_data, mime_type=self.tars_config.audio.mime_type)
         )
         
     async def send_image(self, image_data: bytes, mime_type: str = "image/jpeg") -> None:
@@ -217,7 +224,7 @@ class GeminiService:
     def activate_conversation(self) -> None:
         """Activate conversation mode (called after hotword detection)."""
         self.conversation_manager.transition_to(ConversationState.ACTIVE)
-        print("TARS: I'm listening...")
+        print(self.tars_config.conversation.messages["listening"])
         
     def is_speech_complete(self, response: GeminiResponse) -> bool:
         """Check if user has finished speaking based on transcription."""
@@ -227,7 +234,7 @@ class GeminiService:
     def handle_interruption(self, response: GeminiResponse) -> bool:
         """Handle interruption detection. Returns True if interrupted."""
         if response.interrupted:
-            print("TARS: [Interrupted] Go ahead...")
+            print(self.tars_config.conversation.messages["interrupted"])
             self.conversation_manager.transition_to(ConversationState.ACTIVE)
             return True
         return False
@@ -236,7 +243,7 @@ class GeminiService:
         """Check and handle conversation timeout."""
         if self.conversation_manager.is_conversation_timeout():
             self.conversation_manager.transition_to(ConversationState.PASSIVE)
-            print("TARS: Returning to standby mode.")
+            print(self.tars_config.conversation.messages["standby"])
             return True
         return False
         

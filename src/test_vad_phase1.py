@@ -21,6 +21,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from services.gemini_service import GeminiService
 from core.conversation_state import ConversationState
+from config import get_default_config, load_config_from_env
 
 load_dotenv()
 
@@ -35,8 +36,15 @@ async def simple_vad_test():
         print("ERROR: GEMINI_API_KEY not found in environment variables")
         return
     
-    # Initialize service with conversation management enabled
-    gemini_service = GeminiService(api_key=str(api_key), enable_conversation_management=True)
+    # Load configuration from environment variables (demonstrates centralized config)
+    config = load_config_from_env()
+    
+    # Initialize service with conversation management enabled and centralized configuration
+    gemini_service = GeminiService(
+        api_key=str(api_key),
+        enable_conversation_management=True,
+        config=config
+    )
     
     # Test conversation state transitions
     print("\n1. Testing conversation state transitions:")
