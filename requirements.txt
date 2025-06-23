@@ -1,6 +1,6 @@
+google-genai
+python-dotenv
+sounddevice
 numpy
 pandas
 requests
-google-genai
-python-dotenv
-asyncio
