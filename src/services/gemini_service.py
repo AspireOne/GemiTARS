@@ -1,0 +1,207 @@
+"""
+GeminiService: Handles all interactions with the Gemini Live API.
+
+This service encapsulates:
+- Client initialization and authentication
+- Session lifecycle management  
+- Audio streaming to the API
+- Response processing and handling
+- Configuration management
+- Extension points for function calling and multimodal features
+"""
+
+import asyncio
+from typing import Any, AsyncGenerator, Optional, Callable
+from google import genai
+from google.genai import types
+
+
+class GeminiResponse:
+    """Wrapper for Gemini API responses with processed data."""
+    
+    def __init__(self, raw_response: Any):
+        self.raw_response = raw_response
+        self.text = raw_response.text if raw_response.text else ""
+        self.is_turn_complete = (
+            raw_response.server_content and 
+            raw_response.server_content.turn_complete
+        ) if raw_response.server_content else False
+        
+        # Handle transcription
+        self.transcription_text = ""
+        self.transcription_finished = False
+        if (raw_response.server_content and 
+            raw_response.server_content.input_transcription and
+            raw_response.server_content.input_transcription.text):
+            transcript = raw_response.server_content.input_transcription
+            self.transcription_text = transcript.text.strip()
+            self.transcription_finished = transcript.finished
+
+
+class GeminiService:
+    """
+    Service for managing Gemini Live API interactions.
+    
+    Provides a clean interface for:
+    - Session management
+    - Audio streaming
+    - Response processing
+    - Configuration
+    """
+    
+    def __init__(self, api_key: str, model: str = "gemini-live-2.5-flash-preview"):
+        """
+        Initialize the Gemini service.
+        
+        Args:
+            api_key: Google API key for Gemini
+            model: Model name to use (default: gemini-live-2.5-flash-preview)
+        """
+        self.api_key = api_key
+        self.model = model
+        self.client = genai.Client(api_key=api_key)
+        self.session: Optional[Any] = None
+        self._connection_manager: Optional[Any] = None
+        self.audio_queue = asyncio.Queue()
+        
+        # Default configuration - can be customized
+        self.config: Any = {
+            "response_modalities": ["TEXT"],
+            "input_audio_transcription": {},
+        }
+        
+        # Extension points for future features
+        self.function_registry = {}
+        self.response_handlers = []
+        
+    def set_config(self, config: dict) -> None:
+        """Update the session configuration."""
+        self.config.update(config)
+        
+    def add_function(self, name: str, function: Callable) -> None:
+        """Register a function for function calling (future feature)."""
+        self.function_registry[name] = function
+        
+    def add_response_handler(self, handler: Callable[[GeminiResponse], None]) -> None:
+        """Add a custom response handler (future feature)."""
+        self.response_handlers.append(handler)
+        
+    async def start_session(self) -> None:
+        """Start a new Gemini Live session."""
+        if self.session:
+            await self.close_session()
+            
+        # Use the async context manager logic
+        await self.__aenter__()
+        
+    async def close_session(self) -> None:
+        """Close the current session."""
+        if self._connection_manager:
+            await self.__aexit__(None, None, None)
+            
+    async def send_audio(self, audio_data: bytes) -> None:
+        """
+        Send audio data to the Gemini API.
+        
+        Args:
+            audio_data: Raw audio bytes (PCM format, 16kHz, 16-bit)
+        """
+        if not self.session:
+            raise RuntimeError("Session not started. Call start_session() first.")
+            
+        await self.session.send_realtime_input(
+            audio=types.Blob(data=audio_data, mime_type="audio/pcm;rate=16000")
+        )
+        
+    async def send_image(self, image_data: bytes, mime_type: str = "image/jpeg") -> None:
+        """
+        Send image data to the Gemini API (future multimodal feature).
+        
+        Args:
+            image_data: Raw image bytes
+            mime_type: MIME type of the image
+        """
+        if not self.session:
+            raise RuntimeError("Session not started. Call start_session() first.")
+            
+        # This is a placeholder for future multimodal functionality
+        # Implementation will depend on Gemini Live API updates
+        await self.session.send_realtime_input(
+            image=types.Blob(data=image_data, mime_type=mime_type)
+        )
+        
+    async def receive_responses(self) -> AsyncGenerator[GeminiResponse, None]:
+        """
+        Async generator that yields processed Gemini responses.
+        
+        Yields:
+            GeminiResponse: Processed response objects
+        """
+        if not self.session:
+            raise RuntimeError("Session not started. Call start_session() first.")
+            
+        while True:  # Keep processing responses continuously
+            async for raw_response in self.session.receive():
+                response = GeminiResponse(raw_response)
+                
+                # Apply custom response handlers
+                for handler in self.response_handlers:
+                    handler(response)
+                    
+                yield response
+            
+    async def start_audio_sender(self) -> None:
+        """
+        Start the audio sender task that processes queued audio chunks.
+        This method runs continuously and should be started as a task.
+        """
+        while True:
+            try:
+                audio_chunk_bytes = await self.audio_queue.get()
+                await self.send_audio(audio_chunk_bytes)
+                self.audio_queue.task_done()
+            except Exception as e:
+                print(f"Error in audio sender: {e}")
+                
+    def queue_audio(self, audio_data: bytes) -> None:
+        """
+        Queue audio data for sending (thread-safe).
+        
+        Args:
+            audio_data: Raw audio bytes to send
+        """
+        self.audio_queue.put_nowait(audio_data)
+        
+    async def __aenter__(self):
+        """Async context manager entry."""
+        # Store the context manager from the client
+        self._connection_manager = self.client.aio.live.connect(
+            model=self.model,
+            config=self.config
+        )
+        self.session = await self._connection_manager.__aenter__()
+        return self
+        
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit."""
+        if self._connection_manager:
+            await self._connection_manager.__aexit__(exc_type, exc_val, exc_tb)
+            self.session = None
+            self._connection_manager = None
+        
+    # Future extension methods
+    
+    def enable_function_calling(self, functions: list) -> None:
+        """Enable function calling with provided function definitions (future feature)."""
+        # This will be implemented when function calling is added
+        pass
+        
+    def set_system_instruction(self, instruction: str) -> None:
+        """Set system instruction for the model (future feature)."""
+        # This will be implemented when system instructions are added
+        pass
+        
+    def enable_voice_activity_detection(self) -> None:
+        """Enable voice activity detection (future feature)."""
+        # This will be implemented when VAD is added
+        pass
