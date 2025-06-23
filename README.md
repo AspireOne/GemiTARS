@@ -2,6 +2,8 @@
 
 ## NOTE: THIS IS A CONCEPT OF THE ARCHITECTURE. THE IMPLEMENTATION AND FUNCTIONALITY MIGHT BE DIFFERENT OR CHANGE COMPLETELY.
 
+## NOTE2: ARDUINO IS CURRENTLY USED VIA A WIRED CABLE, INSTEAD OF ESP32 WIFI, AND WE WILL START WITH MIC ONLY.
+
 An advanced, conversational AI assistant inspired by TARS from _Interstellar_. This project uses a distributed architecture with a Raspberry Pi 5 for core processing and an ESP32-CAM as a remote sensor hub, enabling real-time, multimodal interactions with a powerful Large Language Model[^1].
 
 ## Table of Contents

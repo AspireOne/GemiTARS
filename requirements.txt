@@ -1,3 +1,5 @@
 numpy
 pandas
 requests
+google-genai
+python-dotenv
