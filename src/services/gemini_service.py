@@ -15,16 +15,7 @@ from typing import Any, AsyncGenerator, Optional, Callable
 from google import genai
 from google.genai import types
 
-try:
-    from core.conversation_state import ConversationManager, ConversationState
-except ImportError:
-    try:
-        from ..core.conversation_state import ConversationManager, ConversationState
-    except ImportError:
-        import sys
-        import os
-        sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        from core.conversation_state import ConversationManager, ConversationState
+from core.conversation_state import ConversationManager, ConversationState
 
 
 class GeminiResponse:
@@ -83,9 +74,9 @@ class GeminiService:
         self._connection_manager: Optional[Any] = None
         self.audio_queue = asyncio.Queue()
         
-        # Conversation state management (optional for VAD)
+        # Conversation state management
         self.enable_conversation_management = enable_conversation_management
-        self.conversation_manager = ConversationManager() if enable_conversation_management else None
+        self.conversation_manager = ConversationManager()
         
         # Default configuration with VAD enabled
         self.config: Any = {
@@ -200,8 +191,8 @@ class GeminiService:
         Args:
             audio_data: Raw audio bytes to send
         """
-        # If conversation management is disabled, always queue audio (backwards compatibility)
-        if not self.enable_conversation_management or (self.conversation_manager and self.conversation_manager.should_listen_for_speech()):
+        # Queue audio based on conversation management setting
+        if not self.enable_conversation_management or self.conversation_manager.should_listen_for_speech():
             self.audio_queue.put_nowait(audio_data)
         
     async def __aenter__(self):
@@ -225,9 +216,8 @@ class GeminiService:
     
     def activate_conversation(self) -> None:
         """Activate conversation mode (called after hotword detection)."""
-        if self.conversation_manager:
-            self.conversation_manager.transition_to(ConversationState.ACTIVE)
-            print("TARS: I'm listening...")
+        self.conversation_manager.transition_to(ConversationState.ACTIVE)
+        print("TARS: I'm listening...")
         
     def is_speech_complete(self, response: GeminiResponse) -> bool:
         """Check if user has finished speaking based on transcription."""
@@ -238,14 +228,13 @@ class GeminiService:
         """Handle interruption detection. Returns True if interrupted."""
         if response.interrupted:
             print("TARS: [Interrupted] Go ahead...")
-            if self.conversation_manager:
-                self.conversation_manager.transition_to(ConversationState.ACTIVE)
+            self.conversation_manager.transition_to(ConversationState.ACTIVE)
             return True
         return False
         
     def check_conversation_timeout(self) -> bool:
         """Check and handle conversation timeout."""
-        if self.conversation_manager and self.conversation_manager.is_conversation_timeout():
+        if self.conversation_manager.is_conversation_timeout():
             self.conversation_manager.transition_to(ConversationState.PASSIVE)
             print("TARS: Returning to standby mode.")
             return True

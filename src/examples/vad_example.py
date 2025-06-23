@@ -103,13 +103,12 @@ async def main_vad_example() -> None:
     gemini_service = GeminiService(api_key=str(api_key), enable_conversation_management=True)
     
     def audio_callback(indata, frames, time, status):
-        """Audio callback with conversation state awareness."""
+        """Audio callback - let GeminiService handle conversation state logic."""
         if status:
             print(f"Audio status: {status}", flush=True)
         
-        # Only process audio when in appropriate conversation state
-        if gemini_service.conversation_manager.should_listen_for_speech():
-            loop.call_soon_threadsafe(gemini_service.queue_audio, indata.tobytes())
+        # GeminiService will handle conversation state filtering internally
+        loop.call_soon_threadsafe(gemini_service.queue_audio, indata.tobytes())
 
     try:
         loop = asyncio.get_running_loop()
