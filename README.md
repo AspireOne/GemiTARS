@@ -2,6 +2,11 @@
 
 A conversational AI voice assistant inspired by TARS from Interstellar, featuring continuous multimodal conversations powered by Gemini Live API. Uses a distributed architecture with a compact ESP32 "head" for I/O and a server "brain" for AI processing, enabling rich voice and vision interactions with function calling capabilities.
 
+This file provides overview and high level goals/features and architecture of the project.
+
+- To see the current state/progress of the project (what is already implemented, what needs to be implemented etc.), see [`docs/current_state.md`](docs/current_state.md).
+- To see full documentation about Gemini Live API, see [`docs/gemini/`](docs/gemini/).
+
 ## Core Features Overview
 
 - **Hotword Detection**: Listening for a wake word ("Hey, TARS!").
