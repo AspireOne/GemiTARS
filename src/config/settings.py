@@ -15,8 +15,8 @@ class Config:
     DEFAULT_MODEL = "gemini-live-2.5-flash-preview"
 
     # VAD Settings
-    VAD_PREFIX_PADDING_MS = 50
-    VAD_SILENCE_DURATION_MS = 1500
+    VAD_PREFIX_PADDING_MS = 40
+    VAD_SILENCE_DURATION_MS = 1000
 
     # Conversation Settings
     CONVERSATION_TIMEOUT_SECONDS = 30
