@@ -113,5 +113,3 @@
 - **Overall Project**: ~40% complete
 
 The foundation is solid - Gemini Live API integration and conversation state management are working well. The next critical step is implementing the audio output pipeline to enable the full conversational experience.
-
-A conversational AI voice assistant inspired by TARS from Interstellar, featuring continuous multimodal conversations powered by Gemini Live API. Uses a distributed architecture with a compact ESP32 "head" for I/O and a server "brain" for AI processing, enabling rich voice and vision interactions with function calling capabilities.
