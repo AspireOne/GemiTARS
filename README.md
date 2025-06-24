@@ -12,6 +12,17 @@ A conversational AI voice assistant inspired by TARS from Interstellar, featurin
 - **Distributed Architecture**: A compact, low-profile ESP32 unit handles all sensor I/O, while a powerful server manages all the heavy lifting (AI processing, audio processing, logic).
 - **Function Calling:** The assistant will be able to process complex conversational sentences and execute functions (e.g., control smart home devices, perform internet searches...).
 
+## Gemini Live API
+
+Extremely fast and low-latency LLM API that:
+
+- Takes in not only text text, but also images, audio, or combination of these.
+- Streams back responses in real-time, either in text, or audio.
+- Has a built-in VAD (voice activity detection) to automatically wait for a user's speech before responding etc.
+- Has a Live mode, where it itself manages the whole session - it takes in the user's talking (input audio) directly, and decides when and how to respond, whether to be interrupted etc. - no processing on the side of our server.
+
+Documentation of the Gemini Live API is in /docs/gemini/.
+
 ## System Architecture
 
 The system uses a distributed architecture split into two main components communicating over WiFi, designed to keep the user-facing device compact while leveraging powerful server-side processing.
@@ -103,14 +114,9 @@ Tl;Dr:
 - **Audio Quality Issues**: Automatic gain control and noise reduction are applied to incoming audio streams
 - **Concurrent Requests**: System queues multiple rapid inputs to prevent audio stream conflicts
 
-## Gemini Live API
+## Detailed Implementation
 
-An extremely fast and low-latency LLM API that:
-
-- Takes in not only text text, but also images, audio, or combination of these.
-- Streams back responses in real-time, either in text, or audio.
-- Has a built-in VAD (voice activity detection) to automatically wait for a user's speech before responding etc.
-- Has a Live mode, where it itself manages the whole session - it takes in the user's talking (input audio) directly, and decides when and how to respond, whether to be interrupted etc. - no processing on the side of our server. Documentation of the Gemini Live API is in /docs/gemini
+<!-- TODO: The specific hotword tech to use, how to handle interruptions etc. -->
 
 ## Hardware
 
