@@ -16,7 +16,7 @@ class Config:
 
     # VAD Settings
     VAD_PREFIX_PADDING_MS = 40
-    VAD_SILENCE_DURATION_MS = 1000
+    VAD_SILENCE_DURATION_MS = 900
 
     # Conversation Settings
     CONVERSATION_TIMEOUT_SECONDS = 30
@@ -24,5 +24,5 @@ class Config:
     # Hotword Detection Settings
     HOTWORD_MODEL = "alexa"  # Using the default Alexa model you downloaded
     HOTWORD_THRESHOLD = 0.4
-    HOTWORD_BUFFER_SECONDS = 2.0
+    HOTWORD_BUFFER_SECONDS = 1.5
     ACTIVATION_ACKNOWLEDGMENT = "I'm listening..."

@@ -53,9 +53,11 @@ using the computer's mic etc. ESP32 implementation will be done later.
 
 #### **Hotword Detection**
 
-- **Missing**: Porcupine hotword detection integration
-- **Missing**: "Hey TARS" wake word activation
-- **Missing**: Passive listening mode implementation
+- ✅: [`HotwordService`](src/services/hotword_service.py) - OpenWakeWord integration with "Alexa" model
+- ✅: Wake word activation with configurable threshold and cooldown
+- ✅: Passive listening mode with automatic state transitions
+- ✅: Thread-safe audio processing and buffer management
+- ✅: Complete integration with conversation state management
 
 #### **ESP32 Hardware Integration**
 
@@ -75,16 +77,16 @@ using the computer's mic etc. ESP32 implementation will be done later.
 
 **What works right now:**
 
-1. **Direct conversation with Gemini Live**: Run [`python src/main.py`](src/main.py) to start real-time voice conversation
-2. **VAD-aware conversation flow**: The system understands when you start/stop speaking
-3. **Text responses**: Gemini responds with text output in real-time
-4. **Conversation state management**: Proper state transitions and timeout handling
+2. **Wake word detection**: Say "Alexa" to activate conversation (active) mode
+3. **Direct conversation with Gemini Live**: Real-time voice conversation with automatic state management
+4. **VAD-aware conversation flow**: The system understands when you start/stop speaking
+5. **Text responses**: Gemini responds with text output in real-time
+6. **Automatic timeouts**: Returns to passive listening after 30 seconds of inactivity
 
 **What's missing for full TARS experience:**
 
 1. **Voice output**: No TARS voice synthesis yet (text responses only)
-2. **Hotword activation**: Must manually start conversation (no "Hey TARS" detection)
-3. **Hardware integration**: Server-only implementation (no ESP32 integration)
+2. **Hardware integration**: Server-only implementation (no ESP32 integration)
 
 ### 🎯 **Next Implementation Priority**
 
@@ -95,11 +97,12 @@ using the computer's mic etc. ESP32 implementation will be done later.
 - Complete the voice output pipeline
 - Test full conversation flow with voice I/O
 
-**Hotword Integration** (Required for autonomous operation)
+**Audio Output Pipeline** (Next priority for complete experience)
 
-- Implement Porcupine hotword detection
-- Add passive listening mode
-- Complete conversation activation flow
+- Implement ElevenLabs TTS integration
+- Add audio playback with interruption support
+- Complete the voice output pipeline
+- Test full conversation flow with voice I/O
 
 **Hardware Integration** (Required for distributed architecture)
 
@@ -110,9 +113,9 @@ using the computer's mic etc. ESP32 implementation will be done later.
 ### 📊 **Progress Summary**
 
 - **Core AI Integration**: ~80% complete (missing voice output)
-- **Conversation Management**: ~90% complete (missing hotword activation)
-- **Audio Pipeline**: ~50% complete (input ✅, output ❌)
+- **Conversation Management**: ✅ ~100% complete
+- **Audio Pipeline**: ~75% complete (input ✅, hotword ✅, output ❌)
 - **Hardware Integration**: ~0% complete (server-only currently)
-- **Overall Project**: ~40% complete
+- **Overall Project**: ~65% complete
 
-The foundation is solid - Gemini Live API integration and conversation state management are working well. The next critical step is implementing the audio output pipeline to enable the full conversational experience.
+The foundation is solid - Gemini Live API integration, conversation state management, and hotword detection are all working well. The next critical step is implementing the audio output pipeline (ElevenLabs TTS) to enable the full conversational experience with TARS voice.
