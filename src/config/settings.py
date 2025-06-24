@@ -20,3 +20,9 @@ class Config:
 
     # Conversation Settings
     CONVERSATION_TIMEOUT_SECONDS = 30
+    
+    # Hotword Detection Settings
+    HOTWORD_MODEL = "alexa"  # Using the default Alexa model you downloaded
+    HOTWORD_THRESHOLD = 0.4
+    HOTWORD_BUFFER_SECONDS = 2.0
+    ACTIVATION_ACKNOWLEDGMENT = "I'm listening..."

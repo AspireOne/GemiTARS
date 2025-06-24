@@ -1,5 +1,8 @@
 ## Current Project State
 
+Currently, we will focus on completing/mocking the functionality on the server only,
+using the computer's mic etc. ESP32 implementation will be done later.
+
 ### ✅ **Implemented Components**
 
 #### **Core Gemini Live API Integration**

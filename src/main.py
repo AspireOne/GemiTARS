@@ -1,98 +1,333 @@
+"""
+TARS Assistant with Hotword Detection
+
+This is the main application that integrates:
+- Hotword detection using OpenWakeWord (passive mode)
+- Gemini Live API conversation (active mode)
+- State-based audio routing and management
+- Automatic conversation timeouts
+
+Usage: python src/main_with_hotword.py
+"""
+
 import os
 import asyncio
+from typing import Optional
 
 from dotenv import load_dotenv
 import sounddevice as sd
 import numpy as np
 
 from services import GeminiService
+from services.hotword_service import HotwordService
+from core.conversation_state import ConversationManager, ConversationState
+from config import Config
 
 load_dotenv()
 
-api_key = os.environ.get("GEMINI_API_KEY")
-if not api_key:
-    raise RuntimeError(
-        "GEMINI_API_KEY environment variable is not set. "
-        "Please set it in your environment or in a .env file. "
-        "If using a .env file, install python-dotenv."
-    )
 
-# Type assertion since we've checked api_key is not None
-assert api_key is not None
-
-
-async def receive_and_print_responses(gemini_service: GeminiService) -> None:
-    """Receives and prints responses from the Gemini service."""
-    print("Response receiver started.")
-    full_gemini_response = ""
+class TARSAssistant:
+    """
+    Main TARS assistant with hotword activation.
     
-    async for response in gemini_service.receive_responses():
-        # Handle Gemini's text output
-        if response.text:
-            print(response.text, end="", flush=True)
-            full_gemini_response += response.text
-
-        if response.is_turn_complete:
-            if full_gemini_response.strip():
-                print()  # Add a newline after a complete response from Gemini
-            full_gemini_response = ""
-
-        # Handle the transcription of the user's audio
-        if response.transcription_text:
-            if response.transcription_finished:
-                print(f"\n> You said: {response.transcription_text}\n")
+    Manages the complete flow:
+    1. Passive listening for "Alexa" (using existing model)
+    2. Conversation activation and management
+    3. Audio streaming coordination
+    4. State transitions and timeouts
+    """
+    
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        
+        # Core services
+        self.hotword_service = HotwordService()
+        self.gemini_service: Optional[GeminiService] = None
+        self.conversation_manager = ConversationManager()
+        
+        # Audio configuration
+        self.samplerate = Config.AUDIO_SAMPLE_RATE
+        self.blocksize = Config.AUDIO_BLOCK_SIZE
+        self.dtype = Config.AUDIO_DTYPE
+        self.channels = Config.AUDIO_CHANNELS
+        
+        # Event loop reference for thread-safe operations
+        self.loop: Optional[asyncio.AbstractEventLoop] = None
+        
+        # Setup hotword activation callback
+        self.hotword_service.set_activation_callback(self._on_hotword_detected)
+        
+        # Audio stream reference
+        self.audio_stream: Optional[sd.InputStream] = None
+        
+        # Task references for cleanup
+        self.audio_task: Optional[asyncio.Task] = None
+        self.conversation_task: Optional[asyncio.Task] = None
+        self.gemini_sender_task: Optional[asyncio.Task] = None
+        self.gemini_receiver_task: Optional[asyncio.Task] = None
+        
+    async def run(self) -> None:
+        """Main TARS assistant execution loop."""
+        print("🤖 TARS Assistant starting...")
+        print("🔧 Initializing hotword detection...")
+        
+        # Store event loop reference for thread-safe operations
+        self.loop = asyncio.get_running_loop()
+        
+        try:
+            # Start in passive listening mode
+            await self._enter_passive_mode()
+            
+            # Start concurrent tasks
+            self.audio_task = asyncio.create_task(self._audio_capture_loop())
+            self.conversation_task = asyncio.create_task(self._conversation_management_loop())
+            
+            print(f"\n🎯 TARS is ready! Say '{Config.HOTWORD_MODEL}' to activate.")
+            print("Press Ctrl+C to exit.")
+            
+            await asyncio.gather(self.audio_task, self.conversation_task)
+            
+        except Exception as e:
+            print(f"\n❌ An error occurred: {e}")
+        finally:
+            await self._cleanup()
+            
+    async def _enter_passive_mode(self) -> None:
+        """Enter passive listening mode (hotword detection)."""
+        print("💤 TARS: Entering passive listening mode...")
+        
+        # Close any active Gemini session
+        if self.gemini_service:
+            try:
+                await self.gemini_service.close_session()
+            except Exception as e:
+                print(f"⚠️ Error closing Gemini session: {e}")
+            finally:
+                self.gemini_service = None
+            
+        # Cancel Gemini-related tasks
+        if self.gemini_sender_task and not self.gemini_sender_task.done():
+            self.gemini_sender_task.cancel()
+        if self.gemini_receiver_task and not self.gemini_receiver_task.done():
+            self.gemini_receiver_task.cancel()
+            
+        # Start hotword detection
+        self.hotword_service.start_detection()
+        self.conversation_manager.transition_to(ConversationState.PASSIVE)
+        
+        print(f"🎤 Listening for '{Config.HOTWORD_MODEL}'...")
+        
+    async def _enter_active_mode(self) -> None:
+        """Enter active conversation mode."""
+        print("🚀 TARS: Activating conversation mode...")
+        
+        # Stop hotword detection
+        self.hotword_service.stop_detection()
+        
+        # Initialize and start Gemini session
+        try:
+            self.gemini_service = GeminiService(api_key=self.api_key)
+            await self.gemini_service.start_session()
+            
+            # Transition to active conversation
+            self.conversation_manager.transition_to(ConversationState.ACTIVE)
+            
+            # Start Gemini audio processing tasks
+            self.gemini_sender_task = asyncio.create_task(self._gemini_audio_sender())
+            self.gemini_receiver_task = asyncio.create_task(self._gemini_response_handler())
+            
+            # Play acknowledgment
+            print(f"🎤 TARS: {Config.ACTIVATION_ACKNOWLEDGMENT}")
+            
+        except Exception as e:
+            print(f"❌ Error activating conversation mode: {e}")
+            # Fall back to passive mode on error
+            await self._enter_passive_mode()
+        
+    def _on_hotword_detected(self) -> None:
+        """Callback executed when hotword is detected."""
+        # Only activate if we're in passive mode
+        if self.conversation_manager.state == ConversationState.PASSIVE:
+            # Schedule transition to active mode using stored event loop
+            if self.loop:
+                self.loop.call_soon_threadsafe(
+                    lambda: asyncio.create_task(self._enter_active_mode())
+                )
             else:
-                print(f"> You said: {response.transcription_text}", end="\r")
+                print("⚠️ No event loop available for activation")
+        
+    async def _audio_capture_loop(self) -> None:
+        """Main audio capture loop with state-based routing."""
+        def audio_callback(indata, frames, time, status):
+            if status:
+                print(f"Audio status: {status}")
+                
+            audio_bytes = indata.tobytes()
+            
+            # Route audio based on current state
+            try:
+                if self.conversation_manager.state == ConversationState.PASSIVE:
+                    # Process for hotword detection (direct call - no async needed)
+                    self.hotword_service.process_audio_chunk(audio_bytes)
+                    
+                elif self.conversation_manager.state in [ConversationState.ACTIVE, ConversationState.PROCESSING]:
+                    # Stream to Gemini Live API (thread-safe async call)
+                    if self.gemini_service and self.loop:
+                        self.loop.call_soon_threadsafe(
+                            self.gemini_service.queue_audio, audio_bytes
+                        )
+            except Exception as e:
+                print(f"⚠️ Error in audio callback: {e}")
+                    
+        # Start audio stream
+        try:
+            self.audio_stream = sd.InputStream(
+                samplerate=self.samplerate,
+                blocksize=self.blocksize,
+                dtype=self.dtype,
+                channels=self.channels,
+                callback=audio_callback,
+            )
+            
+            with self.audio_stream:
+                # Keep audio stream running
+                while True:
+                    await asyncio.sleep(0.1)
+                    
+        except Exception as e:
+            print(f"❌ Error in audio capture: {e}")
+            raise
+                
+    async def _conversation_management_loop(self) -> None:
+        """Manage conversation timeouts and state transitions."""
+        while True:
+            try:
+                if self.conversation_manager.state in [ConversationState.ACTIVE, ConversationState.PROCESSING]:
+                    # Check for conversation timeout
+                    if self.conversation_manager.is_conversation_timeout():
+                        print("⏰ TARS: Conversation timeout, returning to standby.")
+                        await self._enter_passive_mode()
+                        
+                await asyncio.sleep(1)  # Check every second
+                
+            except Exception as e:
+                print(f"⚠️ Error in conversation management: {e}")
+                await asyncio.sleep(1)
+            
+    async def _gemini_audio_sender(self) -> None:
+        """Send queued audio to Gemini Live API."""
+        if self.gemini_service:
+            try:
+                await self.gemini_service.start_audio_sender()
+            except asyncio.CancelledError:
+                print("🔇 Gemini audio sender cancelled")
+            except Exception as e:
+                print(f"❌ Error in Gemini audio sender: {e}")
+            
+    async def _gemini_response_handler(self) -> None:
+        """Handle responses from Gemini Live API."""
+        if not self.gemini_service:
+            return
+            
+        full_response = ""
+        
+        try:
+            async for response in self.gemini_service.receive_responses():
+                # Handle Gemini's text output
+                if response.text:
+                    print(response.text, end="", flush=True)
+                    full_response += response.text
+
+                if response.is_turn_complete:
+                    if full_response.strip():
+                        print()  # Add newline after complete response
+                    full_response = ""
+                    
+                    # Reset conversation timeout on complete response
+                    self.conversation_manager.update_activity()
+
+                # Handle user transcription
+                if response.transcription_text:
+                    if response.transcription_finished:
+                        print(f"\n> You said: {response.transcription_text}\n")
+                        # Reset timeout on user speech
+                        self.conversation_manager.update_activity()
+                    else:
+                        print(f"> You said: {response.transcription_text}", end="\r")
+                        
+        except asyncio.CancelledError:
+            print("🔇 Gemini response handler cancelled")
+        except Exception as e:
+            print(f"❌ Error in Gemini response handler: {e}")
+                    
+    async def _cleanup(self) -> None:
+        """Clean up resources."""
+        print("\n🔄 TARS: Shutting down...")
+        
+        # Cancel all tasks
+        tasks_to_cancel = [
+            self.audio_task,
+            self.conversation_task, 
+            self.gemini_sender_task,
+            self.gemini_receiver_task
+        ]
+        
+        for task in tasks_to_cancel:
+            if task and not task.done():
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+        
+        # Close audio stream
+        if self.audio_stream:
+            try:
+                self.audio_stream.close()
+            except Exception as e:
+                print(f"⚠️ Error closing audio stream: {e}")
+            
+        # Close Gemini service
+        if self.gemini_service:
+            try:
+                await self.gemini_service.close_session()
+            except Exception as e:
+                print(f"⚠️ Error closing Gemini service: {e}")
+            
+        # Stop hotword detection
+        self.hotword_service.stop_detection()
+        
+        print("✅ TARS: Shutdown complete")
+
+    def get_status(self) -> dict:
+        """Get current status of TARS assistant."""
+        return {
+            "conversation_state": self.conversation_manager.state.value,
+            "hotword_status": self.hotword_service.get_status(),
+            "gemini_active": self.gemini_service is not None,
+            "audio_stream_active": self.audio_stream is not None and self.audio_stream.active
+        }
 
 
 async def main() -> None:
-    print("Program started.")
+    """Main entry point."""
+    # Check for API key
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise RuntimeError(
+            "GEMINI_API_KEY environment variable is not set. "
+            "Please set it in your environment or in a .env file."
+        )
+    
+    # Create and run TARS assistant
+    assistant = TARSAssistant(api_key)
+    await assistant.run()
 
-    # Audio configuration
-    from config import Config
-    samplerate = Config.AUDIO_SAMPLE_RATE
-    blocksize = Config.AUDIO_BLOCK_SIZE
-    dtype = Config.AUDIO_DTYPE
-    channels = Config.AUDIO_CHANNELS
-
-    # Initialize Gemini service (api_key is guaranteed to be str at this point)
-    gemini_service = GeminiService(api_key=str(api_key))
-
-    def audio_callback(indata, frames, time, status):
-        """This function is called by sounddevice for each audio chunk."""
-        if status:
-            print(status, flush=True)
-        # Put the audio data into the Gemini service queue in a thread-safe way
-        loop.call_soon_threadsafe(gemini_service.queue_audio, indata.tobytes())
-
-    try:
-        loop = asyncio.get_running_loop()
-
-        async with gemini_service:
-            print("Gemini session started.")
-
-            # Start the concurrent tasks for sending audio and receiving responses
-            sender_task = asyncio.create_task(gemini_service.start_audio_sender())
-            receiver_task = asyncio.create_task(receive_and_print_responses(gemini_service))
-
-            # Start the microphone stream
-            stream = sd.InputStream(
-                samplerate=samplerate,
-                blocksize=blocksize,
-                dtype=dtype,
-                channels=channels,
-                callback=audio_callback,
-            )
-            with stream:
-                print("\nMicrophone is open. Speak to start the conversation.")
-                print("Press Ctrl+C to exit.")
-                await asyncio.gather(sender_task, receiver_task)
-
-    except Exception as e:
-        print(f"\nAn error occurred: {e}")
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\nProgram interrupted by user. Shutting down.")
+        print("\n👋 TARS: Goodbye!")
+    except Exception as e:
+        print(f"\n💥 Fatal error: {e}")

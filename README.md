@@ -123,6 +123,10 @@ Tl;Dr:
 
 <!-- TODO: The specific hotword tech to use, how to handle interruptions etc. -->
 
+This is roughly how the hotword detection flow is planned currently:
+
+![Conversation Hotword Detection and Gemini Live Diagram](hotword-detection-diagram.png)
+
 ## Hardware
 
 1. **Server (core processor)**: Any local or hosted server (computer, VPS, Raspberry Pi 5 (4GB+ recommended)...)

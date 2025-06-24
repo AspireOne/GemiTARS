@@ -4,3 +4,4 @@ sounddevice
 numpy
 pandas
 requests
+openwakeword
