@@ -160,10 +160,9 @@ This is roughly how the hotword detection flow is planned currently:
 
 - **Python**: 3.11
 - **Libraries**:
-  - `google-generativeai`: For Gemini Live API.
-  - `elevenlabs`: For TTS streaming.
+  - `elevenlabs`: For TTS of TARS voice.
   - `websockets` or `aiohttp`: For communication with the ESP32.
-  - `pvporcupine`: For hotword detection.
+  - `openwakeword`: For hotword detection.
   - etc., see requirements.txt for full list.
 
 1. Clone this repository to your server:

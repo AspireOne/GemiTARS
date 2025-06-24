@@ -15,10 +15,8 @@ import asyncio
 from typing import Optional
 
 from dotenv import load_dotenv
-import sounddevice as sd
-import numpy as np
 
-from services import GeminiService
+from services import GeminiService, ESP32ServiceInterface, ESP32MockService
 from services.hotword_service import HotwordService
 from core.conversation_state import ConversationManager, ConversationState
 from config import Config
@@ -45,11 +43,8 @@ class TARSAssistant:
         self.gemini_service: Optional[GeminiService] = None
         self.conversation_manager = ConversationManager()
         
-        # Audio configuration
-        self.samplerate = Config.AUDIO_SAMPLE_RATE
-        self.blocksize = Config.AUDIO_BLOCK_SIZE
-        self.dtype = Config.AUDIO_DTYPE
-        self.channels = Config.AUDIO_CHANNELS
+        # ESP32 service (mock or real)
+        self.esp32_service: Optional[ESP32ServiceInterface] = None
         
         # Event loop reference for thread-safe operations
         self.loop: Optional[asyncio.AbstractEventLoop] = None
@@ -57,11 +52,7 @@ class TARSAssistant:
         # Setup hotword activation callback
         self.hotword_service.set_activation_callback(self._on_hotword_detected)
         
-        # Audio stream reference
-        self.audio_stream: Optional[sd.InputStream] = None
-        
         # Task references for cleanup
-        self.audio_task: Optional[asyncio.Task] = None
         self.conversation_task: Optional[asyncio.Task] = None
         self.gemini_sender_task: Optional[asyncio.Task] = None
         self.gemini_receiver_task: Optional[asyncio.Task] = None
@@ -69,28 +60,61 @@ class TARSAssistant:
     async def run(self) -> None:
         """Main TARS assistant execution loop."""
         print("🤖 TARS Assistant starting...")
-        print("🔧 Initializing hotword detection...")
+        print("🔧 Initializing ESP32 service...")
         
         # Store event loop reference for thread-safe operations
         self.loop = asyncio.get_running_loop()
         
         try:
+            # Initialize ESP32 service
+            await self._initialize_esp32_service()
+            
             # Start in passive listening mode
             await self._enter_passive_mode()
             
             # Start concurrent tasks
-            self.audio_task = asyncio.create_task(self._audio_capture_loop())
             self.conversation_task = asyncio.create_task(self._conversation_management_loop())
             
             print(f"\n🎯 TARS is ready! Say '{Config.HOTWORD_MODEL}' to activate.")
             print("Press Ctrl+C to exit.")
             
-            await asyncio.gather(self.audio_task, self.conversation_task)
+            await self.conversation_task
             
         except Exception as e:
             print(f"\n❌ An error occurred: {e}")
         finally:
             await self._cleanup()
+    
+    async def _initialize_esp32_service(self) -> None:
+        """Initialize ESP32 service based on configuration."""
+        if Config.ESP32_SERVICE_TYPE == "mock":
+            self.esp32_service = ESP32MockService()
+        else:
+            # Future: ESP32RealService
+            raise NotImplementedError("Real ESP32 service not implemented yet")
+        
+        try:
+            await self.esp32_service.initialize()
+            self.esp32_service.set_audio_callback(self._route_audio_based_on_state)
+            print("✅ ESP32 service initialized successfully")
+        except Exception as e:
+            print(f"❌ Failed to initialize ESP32 service: {e}")
+            self.esp32_service = None
+            raise
+        
+    def _route_audio_based_on_state(self, audio_bytes: bytes) -> None:
+        """Route audio based on current conversation state."""
+        try:
+            if self.conversation_manager.state == ConversationState.PASSIVE:
+                # Process for hotword detection
+                self.hotword_service.process_audio_chunk(audio_bytes)
+                
+            elif self.conversation_manager.state in [ConversationState.ACTIVE, ConversationState.PROCESSING]:
+                # Stream to Gemini Live API
+                if self.gemini_service:
+                    self.gemini_service.queue_audio(audio_bytes)
+        except Exception as e:
+            print(f"⚠️ Error routing audio: {e}")
             
     async def _enter_passive_mode(self) -> None:
         """Enter passive listening mode (hotword detection)."""
@@ -100,6 +124,9 @@ class TARSAssistant:
         if self.gemini_service:
             try:
                 await self.gemini_service.close_session()
+                # Stop audio output
+                if self.esp32_service:
+                    await self.esp32_service.stop_audio_playback()
             except Exception as e:
                 print(f"⚠️ Error closing Gemini session: {e}")
             finally:
@@ -111,7 +138,12 @@ class TARSAssistant:
         if self.gemini_receiver_task and not self.gemini_receiver_task.done():
             self.gemini_receiver_task.cancel()
             
-        # Start hotword detection
+        # Start audio streaming for hotword detection
+        if self.esp32_service:
+            # Only start if not already streaming
+            status = self.esp32_service.get_status()
+            if not status.get('audio_streaming', False):
+                await self.esp32_service.start_audio_streaming()
         self.hotword_service.start_detection()
         self.conversation_manager.transition_to(ConversationState.PASSIVE)
         
@@ -156,48 +188,6 @@ class TARSAssistant:
             else:
                 print("⚠️ No event loop available for activation")
         
-    async def _audio_capture_loop(self) -> None:
-        """Main audio capture loop with state-based routing."""
-        def audio_callback(indata, frames, time, status):
-            if status:
-                print(f"Audio status: {status}")
-                
-            audio_bytes = indata.tobytes()
-            
-            # Route audio based on current state
-            try:
-                if self.conversation_manager.state == ConversationState.PASSIVE:
-                    # Process for hotword detection (direct call - no async needed)
-                    self.hotword_service.process_audio_chunk(audio_bytes)
-                    
-                elif self.conversation_manager.state in [ConversationState.ACTIVE, ConversationState.PROCESSING]:
-                    # Stream to Gemini Live API (thread-safe async call)
-                    if self.gemini_service and self.loop:
-                        self.loop.call_soon_threadsafe(
-                            self.gemini_service.queue_audio, audio_bytes
-                        )
-            except Exception as e:
-                print(f"⚠️ Error in audio callback: {e}")
-                    
-        # Start audio stream
-        try:
-            self.audio_stream = sd.InputStream(
-                samplerate=self.samplerate,
-                blocksize=self.blocksize,
-                dtype=self.dtype,
-                channels=self.channels,
-                callback=audio_callback,
-            )
-            
-            with self.audio_stream:
-                # Keep audio stream running
-                while True:
-                    await asyncio.sleep(0.1)
-                    
-        except Exception as e:
-            print(f"❌ Error in audio capture: {e}")
-            raise
-                
     async def _conversation_management_loop(self) -> None:
         """Manage conversation timeouts and state transitions."""
         while True:
@@ -266,8 +256,7 @@ class TARSAssistant:
         
         # Cancel all tasks
         tasks_to_cancel = [
-            self.audio_task,
-            self.conversation_task, 
+            self.conversation_task,
             self.gemini_sender_task,
             self.gemini_receiver_task
         ]
@@ -280,12 +269,12 @@ class TARSAssistant:
                 except asyncio.CancelledError:
                     pass
         
-        # Close audio stream
-        if self.audio_stream:
+        # Shutdown ESP32 service
+        if self.esp32_service:
             try:
-                self.audio_stream.close()
+                await self.esp32_service.shutdown()
             except Exception as e:
-                print(f"⚠️ Error closing audio stream: {e}")
+                print(f"⚠️ Error shutting down ESP32 service: {e}")
             
         # Close Gemini service
         if self.gemini_service:
@@ -305,7 +294,8 @@ class TARSAssistant:
             "conversation_state": self.conversation_manager.state.value,
             "hotword_status": self.hotword_service.get_status(),
             "gemini_active": self.gemini_service is not None,
-            "audio_stream_active": self.audio_stream is not None and self.audio_stream.active
+            "esp32_status": self.esp32_service.get_status() if self.esp32_service else None,
+            "esp32_connected": self.esp32_service.is_connected() if self.esp32_service else False
         }
 
 

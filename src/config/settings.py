@@ -27,3 +27,14 @@ class Config:
     HOTWORD_BUFFER_SECONDS = 1.5
     HOTWORD_REDETECTION_TIMEOUT_SECONDS = 2
     ACTIVATION_ACKNOWLEDGMENT = "I'm listening..."
+    
+    # ESP32 Service Settings
+    ESP32_SERVICE_TYPE = "mock"  # "mock" or "real"
+    ESP32_CONNECTION_TIMEOUT = 10  # seconds
+    ESP32_RECONNECT_ATTEMPTS = 3
+    ESP32_SIMULATE_LATENCY = False  # Add network delay simulation
+    
+    # ESP32 Real Service Settings (for future)
+    ESP32_SERVER_HOST = "192.168.1.100"
+    ESP32_SERVER_PORT = 8080
+    ESP32_WEBSOCKET_PATH = "/ws"
