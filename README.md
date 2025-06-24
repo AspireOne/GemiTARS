@@ -37,6 +37,81 @@ This distributed approach was chosen to fulfill the goal of a minimal physical f
   - **Chosen Tool:** **ElevenLabs API**, selected for its high-fidelity voice cloning and streaming capabilities, which will be used to create an authentic-sounding TARS voice.
 - **Single Image Capture:** On demand, the ESP32 will capture a still image and send it to the server. This visual context will be sent to the LLM along with the user's speech to enable multimodal understanding.
 
+## Detailed flow
+
+The GemiTARS system operates through several distinct phases, seamlessly transitioning between passive listening and active conversation modes:
+
+Tl;Dr:
+
+- ESP32 mic streams audio to server continuously, at all times
+- server continuously runs hotword detection
+- if hotword is detected, Gemini Live API session is established and server sends acknowledgment tone to ESP32 ("mhm"...)
+- the conversation now continues through the Gemini Live API, with the ESP32 still streaming audio to the server and the server streaming audio (the LLM response audio) to the ESP32.
+- When gemini live api returns text -> send it to elevenlabs -> stream back it's audio chunks directly to the ESP32
+- If no sound is detected / no reply is coming, time out and return to passive listening mode
+
+### 1. Passive Listening State
+
+- The **Processing Hub** (server) continuously monitors audio streams from the ESP32 for the wake word "Hey, TARS!"
+- Uses **Porcupine hotword detection** running locally on the server for low-latency, offline wake word recognition
+- The ESP32 streams raw audio data over WiFi to the server at all times, but the server only processes it for hotword detection (NOTE: This is still an internal discussion - whether to stream audio at all times, hampering battery life and privacy, or try to put a hotword detection model directly on the ESP32 itself OR have the ESP32 only start streaming audio to the server after sound is detected (would require buffered mic))
+- System remains in low-power conversation mode, with minimal processing overhead
+
+### 2. Wake Word Activation
+
+- When "Hey, TARS!" is detected, the system immediately transitions to **Active Conversation Mode**
+- A **Gemini Live API session** is established for real-time, bidirectional audio streaming
+- The server sends an acknowledgment tone or brief response to the ESP32 to indicate successful activation (e.g. "yeah", "mhm", "listening", "Yes sir"...)
+- A conversation timeout timer begins (configurable duration, typically 30-60 seconds)
+
+### 3. Active Conversation Mode
+
+- **Direct Audio Streaming**: Raw audio from the ESP32 microphone is streamed directly to the Gemini Live API
+  - No local speech-to-text transcription occurs, reducing latency
+  - Gemini Live handles real-time audio processing and understanding
+- **Multimodal Input**: User can request visual context by saying phrases like "look at this" or "what do you see?"
+  - ESP32 captures a still image using the onboard camera (not sure how this will be handled yet)
+  - Image is sent to the server and included in the next Gemini API request alongside audio
+- **Continuous Listening**: The system maintains the connection and actively listens for follow-up questions or commands
+- **Conversation Timer**: Resets with each user interaction to maintain natural conversation flow
+
+### 4. Response Generation and Playback
+
+- **LLM Processing**: Gemini Live processes the audio (and optional image) input and generates a text response
+- **Function Calling**: If the response includes function calls (smart home control, web searches, etc.), these are executed on the server
+- **Voice Synthesis**: The text response is sent to **ElevenLabs TTS API** for conversion to TARS-like voice
+- **Audio Streaming**: The synthesized audio is streamed back to the ESP32 in real-time
+- **Playback**: ESP32 plays the audio through the connected I²S speaker/amplifier
+
+### 5. Conversation Continuation or Timeout
+
+- **Active Listening Continues**: After each response, the system continues listening for follow-up input
+- **Timer Management**: Each user interaction resets the conversation timeout
+- **Natural Conversation**: Users can interrupt, ask follow-up questions, or change topics without re-triggering the wake word
+- **Timeout Handling**: If no user input is detected within the timeout period, the system gracefully closes the Gemini Live session and reverts back to passive listening mode
+
+### 6. Return to Passive State
+
+- **Session Cleanup**: The Gemini Live API connection is terminated
+- **State Reset**: System returns to passive hotword detection mode
+- **Resource Management**: Server reduces processing load back to minimal hotword monitoring
+- **Ready for Next Activation**: ESP32 continues streaming audio for the next "Hey, TARS!" detection
+
+### Error Handling and Edge Cases
+
+- **Network Interruptions**: If WiFi connection is lost, ESP32 attempts reconnection while buffering audio locally
+- **Audio Quality Issues**: Automatic gain control and noise reduction are applied to incoming audio streams
+- **Concurrent Requests**: System queues multiple rapid inputs to prevent audio stream conflicts
+
+## Gemini Live API
+
+An extremely fast and low-latency LLM API that:
+
+- Takes in not only text text, but also images, audio, or combination of these.
+- Streams back responses in real-time, either in text, or audio.
+- Has a built-in VAD (voice activity detection) to automatically wait for a user's speech before responding etc.
+- Has a Live mode, where it itself manages the whole session - it takes in the user's talking (input audio) directly, and decides when and how to respond, whether to be interrupted etc. - no processing on the side of our server. Documentation of the Gemini Live API is in /docs/gemini
+
 ## Hardware
 
 1. **Server (core processor)**: Any local or hosted server (computer, VPS, Raspberry Pi 5 (4GB+ recommended)...)
@@ -115,6 +190,7 @@ GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
 
 ## Future Work \& Roadmap
 
+- [ ] **Display**: A display for the TARS robot.
 - [ ] **Improve Noise Cancellation**: Implement software-based noise reduction on the audio stream received from the ESP32.
 - [ ] **Dynamic Configuration of system settings**: Allow system settings (e.g., conversation timeout) to be changed via voice commands.
 - [ ] **Dynamic Configuration of preferences**: Allow to save preferences, possibly in a system of memories (humor setting, personality etc.).
