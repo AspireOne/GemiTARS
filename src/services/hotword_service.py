@@ -9,14 +9,12 @@ This service provides:
 - Cooldown mechanism to prevent multiple rapid detections
 """
 
-import asyncio
 import numpy as np
 from typing import Optional, Callable
 import threading
 import time
 
 try:
-    import openwakeword
     from openwakeword.model import Model
 except ImportError:
     raise ImportError(
@@ -54,7 +52,7 @@ class HotwordService:
         
         # Cooldown mechanism to prevent multiple rapid detections
         self.last_detection_time = 0.0
-        self.cooldown_seconds = 2.0  # Prevent re-detection for 2 seconds
+        self.cooldown_seconds = Config.HOTWORD_REDETECTION_TIMEOUT_SECONDS  # Prevent re-detection for x seconds
         
         # Audio configuration matching GemiTARS setup
         self.sample_rate = Config.AUDIO_SAMPLE_RATE  # 16kHz

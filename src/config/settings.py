@@ -25,4 +25,5 @@ class Config:
     HOTWORD_MODEL = "alexa"  # Using the default Alexa model you downloaded
     HOTWORD_THRESHOLD = 0.4
     HOTWORD_BUFFER_SECONDS = 1.5
+    HOTWORD_REDETECTION_TIMEOUT_SECONDS = 2
     ACTIVATION_ACKNOWLEDGMENT = "I'm listening..."
