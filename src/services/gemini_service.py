@@ -10,12 +10,16 @@ This service encapsulates:
 - Extension points for function calling and multimodal features
 """
 import asyncio
+import os
 from typing import Any, AsyncGenerator, Optional, Callable
 from google import genai
 from google.genai import types
 
 from core.conversation_state import ConversationManager, ConversationState
-from config import Config
+from config.settings import Config
+from utils.logger import setup_logger
+
+logger = setup_logger(os.path.splitext(os.path.basename(__file__))[0])
 
 
 class GeminiResponse:
@@ -181,8 +185,8 @@ class GeminiService:
                 audio_chunk_bytes = await self.audio_queue.get()
                 await self.send_audio(audio_chunk_bytes)
                 self.audio_queue.task_done()
-            except Exception as e:
-                print(f"Error in audio sender: {e}")
+            except Exception:
+                logger.exception("Error in audio sender")
                 
     def queue_audio(self, audio_data: bytes) -> None:
         """
@@ -217,7 +221,7 @@ class GeminiService:
     def activate_conversation(self) -> None:
         """Activate conversation mode (called after hotword detection)."""
         self.conversation_manager.transition_to(ConversationState.ACTIVE)
-        print("TARS: I'm listening...")
+        logger.info("I'm listening...")
         
     def is_speech_complete(self, response: GeminiResponse) -> bool:
         """Check if user has finished speaking based on transcription."""
@@ -227,7 +231,7 @@ class GeminiService:
     def handle_interruption(self, response: GeminiResponse) -> bool:
         """Handle interruption detection. Returns True if interrupted."""
         if response.interrupted:
-            print("TARS: [Interrupted] Go ahead...")
+            logger.info("[Interrupted] Go ahead...")
             self.conversation_manager.transition_to(ConversationState.ACTIVE)
             return True
         return False
@@ -236,7 +240,7 @@ class GeminiService:
         """Check and handle conversation timeout."""
         if self.conversation_manager.is_conversation_timeout():
             self.conversation_manager.transition_to(ConversationState.PASSIVE)
-            print("TARS: Returning to standby mode.")
+            logger.info("Returning to standby mode.")
             return True
         return False
         

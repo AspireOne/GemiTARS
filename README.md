@@ -131,9 +131,9 @@ This is roughly how the hotword detection flow is planned currently:
 
 1. **Server (core processor)**: Any local or hosted server (computer, VPS, Raspberry Pi 5 (4GB+ recommended)...)
 2. **Sensor Hub**: An ESP32 development board.
-3. **Microphone**: A high-quality I²S microphone (e.g., INMP441) for clear audio capture and from far away.
-4. **Camera**: A camera for capturing images, so Tars can 'see' (e.g. OV2640 2MP).
-5. **Speaker**: An I²S amplifier/DAC module (e.g., MAX98357A) connected to a 3W or 5W speaker.
+3. **Microphone**: A I²S microphone INMP441 (for clear audio capture and from far away.)
+4. **Camera**: A OV2640 2MP camera for capturing images, so Tars can 'see'.
+5. **Speaker**: A MAX98357A DAC I²S amplifier connected to a 3W 4Ω 40mm speaker.
 6. **Power**: Separate, stable power supplies for the ESP32.
 7. **Casing**: (Optional) 3D-printed (TARS) case to house the ESP32, camera, mic, and speaker.
 
@@ -208,6 +208,5 @@ GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
 - [ ] **Improve Noise Cancellation**: Implement software-based noise reduction on the audio stream received from the ESP32.
 - [ ] **Dynamic Configuration of system settings**: Allow system settings (e.g., conversation timeout) to be changed via voice commands.
 - [ ] **Dynamic Configuration of preferences**: Allow to save preferences, possibly in a system of memories (humor setting, personality etc.).
-
 
 Potential TARS voice from existing elevenlabs voice: https://elevenlabs.io/app/voice-library?voiceId=qIT7IrVUa21IEiKE1lug

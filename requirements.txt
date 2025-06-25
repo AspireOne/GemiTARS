@@ -7,3 +7,5 @@ requests
 openwakeword
 elevenlabs
 elevenlabs[pyaudio]
+pyaudio
+pydub

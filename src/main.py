@@ -16,7 +16,7 @@ from typing import Optional
 
 from dotenv import load_dotenv
 
-from services import GeminiService, ESP32ServiceInterface, ESP32MockService
+from services import GeminiService, ESP32ServiceInterface, ESP32StreamingService, ElevenLabsService
 from services.hotword_service import HotwordService
 from core.conversation_state import ConversationManager, ConversationState
 from config import Config
@@ -41,6 +41,7 @@ class TARSAssistant:
         # Core services
         self.hotword_service = HotwordService()
         self.gemini_service: Optional[GeminiService] = None
+        self.elevenlabs_service: Optional[ElevenLabsService] = None
         self.conversation_manager = ConversationManager()
         
         # ESP32 service (mock or real)
@@ -66,8 +67,9 @@ class TARSAssistant:
         self.loop = asyncio.get_running_loop()
         
         try:
-            # Initialize ESP32 service
+            # Initialize services
             await self._initialize_esp32_service()
+            await self._initialize_elevenlabs_service()
             
             # Start in passive listening mode
             await self._enter_passive_mode()
@@ -88,7 +90,7 @@ class TARSAssistant:
     async def _initialize_esp32_service(self) -> None:
         """Initialize ESP32 service based on configuration."""
         if Config.ESP32_SERVICE_TYPE == "mock":
-            self.esp32_service = ESP32MockService()
+            self.esp32_service = ESP32StreamingService()
         else:
             # Future: ESP32RealService
             raise NotImplementedError("Real ESP32 service not implemented yet")
@@ -101,6 +103,18 @@ class TARSAssistant:
             print(f"❌ Failed to initialize ESP32 service: {e}")
             self.esp32_service = None
             raise
+    
+    async def _initialize_elevenlabs_service(self) -> None:
+        """Initialize ElevenLabs TTS service."""
+        try:
+            self.elevenlabs_service = ElevenLabsService()
+            await self.elevenlabs_service.initialize()
+            print("✅ ElevenLabs service initialized successfully")
+        except Exception as e:
+            print(f"❌ Failed to initialize ElevenLabs service: {e}")
+            print("⚠️ TTS will be disabled, continuing with text-only responses")
+            self.elevenlabs_service = None
+            # Don't raise - allow system to continue without TTS
         
     def _route_audio_based_on_state(self, audio_bytes: bytes) -> None:
         """Route audio based on current conversation state."""
@@ -169,7 +183,8 @@ class TARSAssistant:
             self.gemini_receiver_task = asyncio.create_task(self._gemini_response_handler())
             
             # Play acknowledgment
-            print(f"🎤 TARS: {Config.ACTIVATION_ACKNOWLEDGMENT}")
+            print(f"🎤 TARS: Listening...")
+            # TODO: At the end of the project, add random audio as acknowledgment ("hmh", "listening", "yes?" etc.)
             
         except Exception as e:
             print(f"❌ Error activating conversation mode: {e}")
@@ -231,6 +246,10 @@ class TARSAssistant:
                 if response.is_turn_complete:
                     if full_response.strip():
                         print()  # Add newline after complete response
+                        
+                        # NEW: Stream TTS audio for complete response
+                        await self._stream_tts_response(full_response.strip())
+                        
                     full_response = ""
                     
                     # Reset conversation timeout on complete response
@@ -249,6 +268,31 @@ class TARSAssistant:
             print("🔇 Gemini response handler cancelled")
         except Exception as e:
             print(f"❌ Error in Gemini response handler: {e}")
+                    
+    async def _stream_tts_response(self, text: str) -> None:
+        """Stream TTS audio for the given text response."""
+        if not self.elevenlabs_service or not self.elevenlabs_service.is_available():
+            print("⚠️ TTS service not available, skipping voice output")
+            return
+        
+        if not self.esp32_service:
+            print("⚠️ ESP32 service not available, skipping audio playback")
+            return
+        
+        try:
+            print(f"🎵 TARS: Converting to speech and streaming...")
+            
+            # Stream TTS audio chunks directly to ESP32 service
+            chunk_count = 0
+            async for audio_chunk in self.elevenlabs_service.stream_tts(text):
+                await self.esp32_service.play_audio_chunk(audio_chunk)
+                chunk_count += 1
+            
+            print(f"✅ TARS: Voice output completed ({chunk_count} chunks)")
+            
+        except Exception as e:
+            print(f"❌ Error in TTS streaming: {e}")
+            print("⚠️ Falling back to text-only response")
                     
     async def _cleanup(self) -> None:
         """Clean up resources."""
@@ -282,6 +326,13 @@ class TARSAssistant:
                 await self.gemini_service.close_session()
             except Exception as e:
                 print(f"⚠️ Error closing Gemini service: {e}")
+        
+        # Shutdown ElevenLabs service
+        if self.elevenlabs_service:
+            try:
+                await self.elevenlabs_service.shutdown()
+            except Exception as e:
+                print(f"⚠️ Error shutting down ElevenLabs service: {e}")
             
         # Stop hotword detection
         self.hotword_service.stop_detection()
@@ -294,6 +345,8 @@ class TARSAssistant:
             "conversation_state": self.conversation_manager.state.value,
             "hotword_status": self.hotword_service.get_status(),
             "gemini_active": self.gemini_service is not None,
+            "elevenlabs_status": self.elevenlabs_service.get_status() if self.elevenlabs_service else None,
+            "elevenlabs_available": self.elevenlabs_service.is_available() if self.elevenlabs_service else False,
             "esp32_status": self.esp32_service.get_status() if self.esp32_service else None,
             "esp32_connected": self.esp32_service.is_connected() if self.esp32_service else False
         }

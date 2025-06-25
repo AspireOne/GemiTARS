@@ -29,25 +29,16 @@ class Config:
     # Hotword Detection Settings
     HOTWORD_MODEL = "alexa"  # Using the default Alexa model you downloaded
     HOTWORD_THRESHOLD = 0.4
-    HOTWORD_BUFFER_SECONDS = 1.5
+    HOTWORD_BUFFER_SECONDS = 1.5 # How long does it take to say? + buffer
     HOTWORD_REDETECTION_TIMEOUT_SECONDS = 2
-    ACTIVATION_ACKNOWLEDGMENT = "I'm listening..."
     
     # ESP32 Service Settings
     ESP32_SERVICE_TYPE = "mock"  # "mock" or "real"
-    ESP32_CONNECTION_TIMEOUT = 10  # seconds
-    ESP32_RECONNECT_ATTEMPTS = 3
-    ESP32_SIMULATE_LATENCY = False  # Add network delay simulation
-    
-    # ESP32 Real Service Settings (for future)
-    ESP32_SERVER_HOST = "192.168.1.100"
-    ESP32_SERVER_PORT = 8080
-    ESP32_WEBSOCKET_PATH = "/ws"
     
     # ElevenLabs TTS Settings
-    ELEVENLABS_VOICE_ID = "qIT7IrVUa21IEiKE1lug"
+    ELEVENLABS_VOICE_ID = "dXtC3XhB9GtPusIpNtQx"
     ELEVENLABS_MODEL_ID = "eleven_flash_v2_5"  # Ultra-low latency model
-    ELEVENLABS_OUTPUT_FORMAT = "pcm_16000"      # Match ESP32 format (16kHz PCM)
+    ELEVENLABS_OUTPUT_FORMAT = "pcm_16000"      # 16kHz PCM for optimal ESP32 performance
     ELEVENLABS_CHUNK_SIZE = 1024                # Streaming chunk size
     ELEVENLABS_STABILITY = 0.5                  # Voice stability (0-1)
-    ELEVENLABS_SIMILARITY_BOOST = 0.8           # Voice similarity (0-1)
+    ELEVENLABS_SIMILARITY_BOOST = 0.75          # Voice similarity (0-1) - match demo
