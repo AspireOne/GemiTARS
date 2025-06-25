@@ -38,3 +38,11 @@ class Config:
     ESP32_SERVER_HOST = "192.168.1.100"
     ESP32_SERVER_PORT = 8080
     ESP32_WEBSOCKET_PATH = "/ws"
+    
+    # ElevenLabs TTS Settings
+    ELEVENLABS_VOICE_ID = "qIT7IrVUa21IEiKE1lug"
+    ELEVENLABS_MODEL_ID = "eleven_flash_v2_5"  # Ultra-low latency model
+    ELEVENLABS_OUTPUT_FORMAT = "pcm_16000"      # Match ESP32 format (16kHz PCM)
+    ELEVENLABS_CHUNK_SIZE = 1024                # Streaming chunk size
+    ELEVENLABS_STABILITY = 0.5                  # Voice stability (0-1)
+    ELEVENLABS_SIMILARITY_BOOST = 0.8           # Voice similarity (0-1)

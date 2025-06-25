@@ -5,3 +5,5 @@ numpy
 pandas
 requests
 openwakeword
+elevenlabs
+elevenlabs[pyaudio]
