@@ -1,9 +1,14 @@
+import logging
+
 """
 Simple centralized configuration for GemiTARS.
 All magic values are defined here for easy maintenance.
 """
 
 class Config:
+    # Logging
+    LOG_LEVEL = logging.DEBUG
+    
     # Audio Settings
     AUDIO_SAMPLE_RATE = 16000
     AUDIO_BLOCK_SIZE = 1600
