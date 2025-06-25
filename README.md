@@ -208,3 +208,6 @@ GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
 - [ ] **Improve Noise Cancellation**: Implement software-based noise reduction on the audio stream received from the ESP32.
 - [ ] **Dynamic Configuration of system settings**: Allow system settings (e.g., conversation timeout) to be changed via voice commands.
 - [ ] **Dynamic Configuration of preferences**: Allow to save preferences, possibly in a system of memories (humor setting, personality etc.).
+
+
+Potential TARS voice from existing elevenlabs voice: https://elevenlabs.io/app/voice-library?voiceId=qIT7IrVUa21IEiKE1lug
