@@ -15,7 +15,6 @@ from typing import Any, AsyncGenerator, Optional, Callable
 from google import genai
 from google.genai import types
 
-from core.conversation_state import ConversationManager, ConversationState
 from config.settings import Config
 from utils.logger import setup_logger
 
@@ -62,8 +61,7 @@ class GeminiService:
     """
     
     def __init__(self, api_key: str, model: str = Config.DEFAULT_MODEL,
-                 system_prompt: Optional[str] = None,
-                 enable_conversation_management: bool = False):
+                 system_prompt: Optional[str] = None):
         """
         Initialize the Gemini service.
 
@@ -71,7 +69,6 @@ class GeminiService:
             api_key: Google API key for Gemini
             model: Model name to use (default: Config.DEFAULT_MODEL)
             system_prompt: The system prompt to send to the model at the start of the session
-            enable_conversation_management: Enable conversation state management for VAD (default: False)
         """
         self.api_key = api_key
         self.model = model
@@ -80,10 +77,6 @@ class GeminiService:
         self.session: Optional[Any] = None
         self._connection_manager: Optional[Any] = None
         self.audio_queue = asyncio.Queue()
-
-        # Conversation state management
-        self.enable_conversation_management = enable_conversation_management
-        self.conversation_manager = ConversationManager()
 
         # Default configuration with VAD enabled
         self.config: Any = {
@@ -206,13 +199,11 @@ class GeminiService:
     def queue_audio(self, audio_data: bytes) -> None:
         """
         Queue audio data for sending (thread-safe).
-        
+
         Args:
             audio_data: Raw audio bytes to send
         """
-        # Queue audio based on conversation management setting
-        if not self.enable_conversation_management or self.conversation_manager.should_listen_for_speech():
-            self.audio_queue.put_nowait(audio_data)
+        self.audio_queue.put_nowait(audio_data)
         
     async def __aenter__(self):
         """Async context manager entry."""
@@ -231,34 +222,6 @@ class GeminiService:
             self.session = None
             self._connection_manager = None
     
-    # VAD and conversation management methods
-    
-    def activate_conversation(self) -> None:
-        """Activate conversation mode (called after hotword detection)."""
-        self.conversation_manager.transition_to(ConversationState.ACTIVE)
-        logger.info("I'm listening...")
-        
-    def is_speech_complete(self, response: GeminiResponse) -> bool:
-        """Check if user has finished speaking based on transcription."""
-        return (response.transcription_finished and
-                bool(response.transcription_text.strip()))
-                
-    def handle_interruption(self, response: GeminiResponse) -> bool:
-        """Handle interruption detection. Returns True if interrupted."""
-        if response.interrupted:
-            logger.info("[Interrupted] Go ahead...")
-            self.conversation_manager.transition_to(ConversationState.ACTIVE)
-            return True
-        return False
-        
-    def check_conversation_timeout(self) -> bool:
-        """Check and handle conversation timeout."""
-        if self.conversation_manager.is_conversation_timeout():
-            self.conversation_manager.transition_to(ConversationState.PASSIVE)
-            logger.info("Returning to standby mode.")
-            return True
-        return False
-        
     # Future extension methods
     
     def enable_function_calling(self, functions: list) -> None:
