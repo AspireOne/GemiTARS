@@ -16,7 +16,7 @@ from typing import Optional
 
 from dotenv import load_dotenv
 
-from services import GeminiService, ESP32ServiceInterface, ESP32StreamingService, ElevenLabsService
+from services import GeminiService, ESP32ServiceInterface, ESP32MockService, ElevenLabsService
 from services.hotword_service import HotwordService
 from core.conversation_state import ConversationManager, ConversationState
 from config import Config
@@ -90,7 +90,7 @@ class TARSAssistant:
     async def _initialize_esp32_service(self) -> None:
         """Initialize ESP32 service based on configuration."""
         if Config.ESP32_SERVICE_TYPE == "mock":
-            self.esp32_service = ESP32StreamingService()
+            self.esp32_service = ESP32MockService()
         else:
             # Future: ESP32RealService
             raise NotImplementedError("Real ESP32 service not implemented yet")

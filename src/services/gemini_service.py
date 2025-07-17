@@ -129,8 +129,8 @@ class GeminiService:
         # Send system prompt if it exists
         if self.system_prompt and self.session:
             await self.session.send_client_content(
-                turns=[{"role": "user", "parts": [{"text": f"[System prompt - your personality: \n\n{self.system_prompt}\n\nIf you understand, only say 'huh'!]"}]}],
-                # TODO: This causes an instant reply, sent to elevenlabs etc. but when it's false, then the prompt is not applied... We need to fix it.
+                turns=[{"role": "user", "parts": [{"text": f"[System prompt - your personality: \n\n{self.system_prompt}\n\nIf you understand, only reply with empty whitespace 'huh'!]"}]}],
+                # TODO: This is bad because itcauses an instant reply, sent to elevenlabs etc. and also adds initial delay, but when it's false, then the prompt is not applied... We need to fix it.
                 turn_complete=True
             )
         
