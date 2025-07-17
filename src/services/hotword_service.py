@@ -13,6 +13,7 @@ import numpy as np
 from typing import Optional, Callable
 import threading
 import time
+import collections
 
 try:
     from openwakeword.model import Model
@@ -46,7 +47,6 @@ class HotwordService:
         self.wake_word = wake_word
         self.threshold = threshold
         self.is_active = False
-        self.audio_buffer = []
         self.activation_callback: Optional[Callable] = None
         self._lock = threading.Lock()
         
@@ -74,6 +74,7 @@ class HotwordService:
         # Calculate buffer management parameters
         self.samples_per_second = self.sample_rate
         self.max_buffer_size = int(self.samples_per_second * self.buffer_max_seconds)
+        self.audio_buffer = collections.deque(maxlen=self.max_buffer_size)
         self.min_detection_samples = self.sample_rate  # 1 second minimum for detection
         
     def set_activation_callback(self, callback: Callable[[], None]) -> None:
@@ -140,13 +141,8 @@ class HotwordService:
                 return False
             
             # Accumulate audio for model processing
-            self.audio_buffer.extend(audio_np.tolist())
-            
-            # Maintain rolling buffer (keep only recent audio)
-            if len(self.audio_buffer) > self.max_buffer_size:
-                # Remove oldest samples to maintain buffer size
-                excess = len(self.audio_buffer) - self.max_buffer_size
-                self.audio_buffer = self.audio_buffer[excess:]
+            # The deque automatically handles the size limit efficiently
+            self.audio_buffer.extend(audio_np)
             
             # Only process if we have enough audio for detection
             if len(self.audio_buffer) >= self.min_detection_samples:
@@ -163,7 +159,7 @@ class HotwordService:
         """
         try:
             # Convert buffer to numpy array for OpenWakeWord
-            audio_array = np.array(self.audio_buffer[-self.min_detection_samples:], dtype=np.float32)
+            audio_array = np.array(self.audio_buffer, dtype=np.float32)
             
             # Normalize audio to [-1, 1] range (OpenWakeWord expects float32)
             if audio_array.dtype == np.int16:
