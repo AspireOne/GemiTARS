@@ -242,6 +242,7 @@ class TARSAssistant:
             
         full_response = ""
         is_processing = False  # Flag to ensure we only transition once per turn
+        current_transcription = ""
         
         try:
             async for response in self.gemini_service.receive_responses():
@@ -268,14 +269,23 @@ class TARSAssistant:
                     # Reset conversation timeout on complete response
                     self.conversation_manager.update_activity()
 
-                # Handle user transcription
+                # Handle user transcription with progressive concatenation
                 if response.transcription_text:
-                    # Reset timeout on any user speech, partial or finished
                     self.conversation_manager.update_activity()
+                    
+                    # If this is the start of a new transcription, print the prompt
+                    if not current_transcription:
+                        print("> You said: ", end="", flush=True)
+                    
+                    # Accumulate the transcription text progressively
+                    current_transcription += response.transcription_text
+                    
+                    # Print just the new chunk without overwriting
+                    print(response.transcription_text, end="", flush=True)
+                    
                     if response.transcription_finished:
-                        print(f"\n> You said: {response.transcription_text}\n")
-                    else:
-                        print(f"> You said: {response.transcription_text}", end="\r")
+                        print()  # Move to next line when transcription is complete
+                        current_transcription = ""  # Reset for next utterance
                         
         except asyncio.CancelledError:
             print("🔇 Gemini response handler cancelled")
