@@ -197,6 +197,16 @@ class ESP32StreamingService(ESP32ServiceInterface):
             self.stats['audio_chunks_played'] += 1
             self.stats['total_audio_bytes_out'] += len(audio_data)
             self.status.last_activity = time.time()
+
+    async def wait_for_playback_completion(self):
+        """
+        Waits until the audio output queue is empty and then adds a small
+        delay for the sounddevice buffer to clear.
+        """
+        while not self.audio_output_queue.empty():
+            await asyncio.sleep(0.05)
+        # Wait a bit for the last chunks in the sounddevice buffer to play
+        await asyncio.sleep(0.2)
     
     async def _start_audio_streaming(self) -> None:
         """Start the audio output stream using the proven streaming approach."""

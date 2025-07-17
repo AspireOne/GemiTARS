@@ -118,15 +118,18 @@ class TARSAssistant:
         
     def _route_audio_based_on_state(self, audio_bytes: bytes) -> None:
         """Route audio based on current conversation state."""
+        state = self.conversation_manager.state
         try:
-            if self.conversation_manager.state == ConversationState.PASSIVE:
-                # Process for hotword detection
+            if state == ConversationState.PASSIVE:
+                # Route to hotword detection
                 self.hotword_service.process_audio_chunk(audio_bytes)
-                
-            elif self.conversation_manager.state in [ConversationState.ACTIVE, ConversationState.PROCESSING]:
-                # Stream to Gemini Live API
+    
+            elif state == ConversationState.ACTIVE:
+                # Route to Gemini Live API
                 if self.gemini_service:
                     self.gemini_service.queue_audio(audio_bytes)
+            
+            # In all other states (PROCESSING, SPEAKING), audio is ignored.
         except Exception as e:
             print(f"⚠️ Error routing audio: {e}")
             
@@ -207,7 +210,7 @@ class TARSAssistant:
         """Manage conversation timeouts and state transitions."""
         while True:
             try:
-                if self.conversation_manager.state in [ConversationState.ACTIVE, ConversationState.PROCESSING]:
+                if self.conversation_manager.state in [ConversationState.ACTIVE, ConversationState.PROCESSING, ConversationState.SPEAKING]:
                     # Check for conversation timeout
                     if self.conversation_manager.is_conversation_timeout():
                         print("⏰ TARS: Conversation timeout, returning to standby.")
@@ -235,11 +238,17 @@ class TARSAssistant:
             return
             
         full_response = ""
+        is_processing = False  # Flag to ensure we only transition once per turn
         
         try:
             async for response in self.gemini_service.receive_responses():
                 # Handle Gemini's text output
                 if response.text:
+                    # On the first text chunk, transition to PROCESSING to mute the mic
+                    if not is_processing:
+                        self.conversation_manager.transition_to(ConversationState.PROCESSING)
+                        is_processing = True
+                    
                     print(response.text, end="", flush=True)
                     full_response += response.text
 
@@ -251,6 +260,7 @@ class TARSAssistant:
                         await self._stream_tts_response(full_response.strip())
                         
                     full_response = ""
+                    is_processing = False  # Reset for the next turn
                     
                     # Reset conversation timeout on complete response
                     self.conversation_manager.update_activity()
@@ -271,28 +281,35 @@ class TARSAssistant:
                     
     async def _stream_tts_response(self, text: str) -> None:
         """Stream TTS audio for the given text response."""
-        if not self.elevenlabs_service or not self.elevenlabs_service.is_available():
-            print("⚠️ TTS service not available, skipping voice output")
+        if not self.elevenlabs_service or not self.esp32_service:
+            print("⚠️ TTS or ESP32 service not available, skipping voice output")
+            # If services are unavailable, transition back to ACTIVE immediately
+            self.conversation_manager.transition_to(ConversationState.ACTIVE)
             return
-        
-        if not self.esp32_service:
-            print("⚠️ ESP32 service not available, skipping audio playback")
-            return
-        
+    
         try:
+            # 1. Transition from PROCESSING to SPEAKING
+            self.conversation_manager.transition_to(ConversationState.SPEAKING)
+            
             print(f"🎵 TARS: Converting to speech and streaming...")
             
-            # Stream TTS audio chunks directly to ESP32 service
+            # 2. Stream TTS audio
             chunk_count = 0
             async for audio_chunk in self.elevenlabs_service.stream_tts(text):
                 await self.esp32_service.play_audio_chunk(audio_chunk)
                 chunk_count += 1
             
-            print(f"✅ TARS: Voice output completed ({chunk_count} chunks)")
+            # Wait for the audio queue to be fully processed
+            await self.esp32_service.wait_for_playback_completion()
             
+            print(f"✅ TARS: Voice output completed ({chunk_count} chunks)")
+    
         except Exception as e:
             print(f"❌ Error in TTS streaming: {e}")
-            print("⚠️ Falling back to text-only response")
+        finally:
+            # 3. IMPORTANT: Always transition back to ACTIVE after speaking/error
+            if self.conversation_manager.state == ConversationState.SPEAKING:
+                self.conversation_manager.transition_to(ConversationState.ACTIVE)
                     
     async def _cleanup(self) -> None:
         """Clean up resources."""

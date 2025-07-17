@@ -87,6 +87,11 @@ class ESP32ServiceInterface(ABC):
     async def stop_audio_playback(self) -> None:
         """Stop current audio playback and clear audio queue."""
         pass
+
+    @abstractmethod
+    async def wait_for_playback_completion(self) -> None:
+        """Wait until all queued audio chunks have been played."""
+        pass
     
     # Camera Methods (Future Implementation)
     @abstractmethod
