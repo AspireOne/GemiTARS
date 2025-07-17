@@ -213,7 +213,7 @@ class TARSAssistant:
         """Manage conversation timeouts and state transitions."""
         while True:
             try:
-                if self.conversation_manager.state in [ConversationState.ACTIVE, ConversationState.PROCESSING, ConversationState.SPEAKING]:
+                if self.conversation_manager.state in [ConversationState.ACTIVE, ConversationState.PROCESSING]:
                     # Check for conversation timeout
                     if self.conversation_manager.is_conversation_timeout():
                         print("⏰ TARS: Conversation timeout, returning to standby.")
