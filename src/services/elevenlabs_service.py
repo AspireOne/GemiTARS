@@ -15,8 +15,20 @@ import numpy as np
 from typing import AsyncGenerator, Optional
 from elevenlabs.client import AsyncElevenLabs
 from elevenlabs import VoiceSettings
+from dataclasses import dataclass, field, asdict
 
 from config import Config
+
+
+@dataclass
+class ElevenLabsStats:
+    """Statistics for monitoring ElevenLabs TTS service."""
+    tts_requests: int = 0
+    audio_chunks_generated: int = 0
+    total_characters_processed: int = 0
+    total_audio_bytes_generated: int = 0
+    errors: int = 0
+    last_error: Optional[str] = None
 
 
 class ElevenLabsService:
@@ -32,14 +44,7 @@ class ElevenLabsService:
         self.is_initialized = False
         
         # Statistics for monitoring
-        self.stats = {
-            'tts_requests': 0,
-            'audio_chunks_generated': 0,
-            'total_characters_processed': 0,
-            'total_audio_bytes_generated': 0,
-            'errors': 0,
-            'last_error': None
-        }
+        self.stats = ElevenLabsStats()
     
     async def initialize(self) -> None:
         """Initialize the ElevenLabs service."""
@@ -62,8 +67,8 @@ class ElevenLabsService:
         except Exception as e:
             error_msg = f"Failed to initialize ElevenLabs client: {e}"
             print(f"❌ ElevenLabs: {error_msg}")
-            self.stats['errors'] += 1
-            self.stats['last_error'] = error_msg
+            self.stats.errors += 1
+            self.stats.last_error = error_msg
             raise
     
     async def shutdown(self) -> None:
@@ -102,8 +107,8 @@ class ElevenLabsService:
         print(f"🎵 ElevenLabs: Starting TTS for text: '{text[:50]}{'...' if len(text) > 50 else ''}'")
         
         # Update statistics
-        self.stats['tts_requests'] += 1
-        self.stats['total_characters_processed'] += len(text)
+        self.stats.tts_requests += 1
+        self.stats.total_characters_processed += len(text)
         
         try:
             # Create voice settings
@@ -127,8 +132,8 @@ class ElevenLabsService:
                 if isinstance(chunk, bytes) and len(chunk) > 0:
                     # Update statistics
                     chunk_count += 1
-                    self.stats['audio_chunks_generated'] += 1
-                    self.stats['total_audio_bytes_generated'] += len(chunk)
+                    self.stats.audio_chunks_generated += 1
+                    self.stats.total_audio_bytes_generated += len(chunk)
                     
                     # Stream chunk directly - no conversion needed for pcm_24000
                     yield chunk
@@ -138,8 +143,8 @@ class ElevenLabsService:
         except Exception as e:
             error_msg = f"TTS streaming failed: {e}"
             print(f"❌ ElevenLabs: {error_msg}")
-            self.stats['errors'] += 1
-            self.stats['last_error'] = error_msg
+            self.stats.errors += 1
+            self.stats.last_error = error_msg
             raise
     
     def _convert_audio_format(self, audio_chunk: bytes) -> Optional[bytes]:
@@ -192,7 +197,7 @@ class ElevenLabsService:
             'service_type': 'ElevenLabs',
             'is_initialized': self.is_initialized,
             'client_connected': self.client is not None,
-            'statistics': self.stats.copy(),
+            'statistics': asdict(self.stats),
             'config': {
                 'voice_id': Config.ELEVENLABS_VOICE_ID,
                 'model_id': Config.ELEVENLABS_MODEL_ID,

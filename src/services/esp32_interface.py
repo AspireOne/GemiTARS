@@ -8,29 +8,28 @@ must follow, ensuring seamless switching between mock and real hardware.
 from abc import ABC, abstractmethod
 from typing import Callable, Optional, Dict, Any
 import asyncio
+from dataclasses import dataclass, field
 
 
+@dataclass
 class AudioStreamConfig:
     """Configuration for audio streaming."""
-    
-    def __init__(self):
-        self.sample_rate: int = 16000
-        self.channels: int = 1
-        self.dtype: str = 'int16'
-        self.block_size: int = 1600
-        self.mime_type: str = "audio/pcm;rate=16000"
+    sample_rate: int = 16000
+    channels: int = 1
+    dtype: str = 'int16'
+    block_size: int = 1600
+    mime_type: str = "audio/pcm;rate=16000"
 
 
+@dataclass
 class ESP32Status:
     """Standard status structure for ESP32 services."""
-    
-    def __init__(self):
-        self.is_connected: bool = False
-        self.audio_streaming: bool = False
-        self.audio_playing: bool = False
-        self.last_activity: Optional[float] = None
-        self.error_count: int = 0
-        self.last_error: Optional[str] = None
+    is_connected: bool = False
+    audio_streaming: bool = False
+    audio_playing: bool = False
+    last_activity: Optional[float] = None
+    error_count: int = 0
+    last_error: Optional[str] = None
 
 
 class ESP32ServiceInterface(ABC):

@@ -15,9 +15,20 @@ import threading
 import time
 import queue
 from typing import Callable, Optional, Dict, Any
+from dataclasses import dataclass, field, asdict
 
 from .esp32_interface import ESP32ServiceInterface, AudioStreamConfig, ESP32Status
 from config import Config
+
+
+@dataclass
+class ESP32MockStats:
+    """Statistics for monitoring the ESP32 mock service."""
+    audio_chunks_received: int = 0
+    audio_chunks_played: int = 0
+    total_audio_bytes_in: int = 0
+    total_audio_bytes_out: int = 0
+    connection_time: Optional[float] = None
 
 
 class ESP32MockService(ESP32ServiceInterface):
@@ -48,13 +59,7 @@ class ESP32MockService(ESP32ServiceInterface):
         self._lock = threading.Lock()
         
         # Statistics and monitoring
-        self.stats = {
-            'audio_chunks_received': 0,
-            'audio_chunks_played': 0,
-            'total_audio_bytes_in': 0,
-            'total_audio_bytes_out': 0,
-            'connection_time': None
-        }
+        self.stats = ESP32MockStats()
     
     async def initialize(self) -> None:
         """Initialize the streaming ESP32 service."""
@@ -70,7 +75,7 @@ class ESP32MockService(ESP32ServiceInterface):
         with self._lock:
             self.status.is_connected = True
             self.status.last_activity = time.time()
-            self.stats['connection_time'] = time.time()
+            self.stats.connection_time = time.time()
         
         print("✅ ESP32 Streaming: Initialized successfully")
     
@@ -105,8 +110,8 @@ class ESP32MockService(ESP32ServiceInterface):
             
             # Update statistics
             with self._lock:
-                self.stats['audio_chunks_received'] += 1
-                self.stats['total_audio_bytes_in'] += len(audio_bytes)
+                self.stats.audio_chunks_received += 1
+                self.stats.total_audio_bytes_in += len(audio_bytes)
                 self.status.last_activity = time.time()
             
             # Call the registered callback (thread-safe)
@@ -197,8 +202,8 @@ class ESP32MockService(ESP32ServiceInterface):
         
         # Update statistics
         with self._lock:
-            self.stats['audio_chunks_played'] += 1
-            self.stats['total_audio_bytes_out'] += len(audio_data)
+            self.stats.audio_chunks_played += 1
+            self.stats.total_audio_bytes_out += len(audio_data)
             self.status.last_activity = time.time()
 
     async def wait_for_playback_completion(self):
@@ -333,7 +338,7 @@ class ESP32MockService(ESP32ServiceInterface):
                 'last_activity': self.status.last_activity,
                 'error_count': self.status.error_count,
                 'last_error': self.status.last_error,
-                'statistics': self.stats.copy(),
+                'statistics': asdict(self.stats),
                 'audio_config': {
                     'sample_rate': self.audio_config.sample_rate,
                     'channels': self.audio_config.channels,
