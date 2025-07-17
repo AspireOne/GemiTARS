@@ -6,7 +6,6 @@ Basic test to verify ElevenLabs service integration works correctly.
 
 import asyncio
 import os
-from unittest.mock import AsyncMock, Mock
 
 import sys
 from dotenv import load_dotenv
