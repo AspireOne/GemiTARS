@@ -175,7 +175,10 @@ class TARSAssistant:
         
         # Initialize and start Gemini session
         try:
-            self.gemini_service = GeminiService(api_key=self.api_key)
+            self.gemini_service = GeminiService(
+                api_key=self.api_key,
+                system_prompt=Config.SYSTEM_PROMPT
+            )
             await self.gemini_service.start_session()
             
             # Transition to active conversation

@@ -62,6 +62,7 @@ class GeminiService:
     """
     
     def __init__(self, api_key: str, model: str = Config.DEFAULT_MODEL,
+                 system_prompt: Optional[str] = None,
                  enable_conversation_management: bool = False):
         """
         Initialize the Gemini service.
@@ -69,10 +70,12 @@ class GeminiService:
         Args:
             api_key: Google API key for Gemini
             model: Model name to use (default: Config.DEFAULT_MODEL)
+            system_prompt: The system prompt to send to the model at the start of the session
             enable_conversation_management: Enable conversation state management for VAD (default: False)
         """
         self.api_key = api_key
         self.model = model
+        self.system_prompt = system_prompt
         self.client = genai.Client(api_key=api_key)
         self.session: Optional[Any] = None
         self._connection_manager: Optional[Any] = None
@@ -115,9 +118,17 @@ class GeminiService:
         """Start a new Gemini Live session."""
         if self.session:
             await self.close_session()
-            
+
         # Use the async context manager logic
         await self.__aenter__()
+
+        # Send system prompt if it exists
+        if self.system_prompt and self.session:
+            await self.session.send_client_content(
+                turns=[{"role": "user", "parts": [{"text": f"[System prompt - your personality: \n\n{self.system_prompt}\n\nIf you understand, only say 'huh'!]"}]}],
+                # TODO: This causes an instant reply, sent to elevenlabs etc. but when it's false, then the prompt is not applied... We need to fix it.
+                turn_complete=True
+            )
         
     async def close_session(self) -> None:
         """Close the current session."""
@@ -252,9 +263,11 @@ class GeminiService:
         pass
         
     def set_system_instruction(self, instruction: str) -> None:
-        """Set system instruction for the model (future feature)."""
-        # This will be implemented when system instructions are added
-        pass
+        """
+        Set or update the system instruction for the model.
+        This will be applied the next time a session is started.
+        """
+        self.system_prompt = instruction
         
     def enable_voice_activity_detection(self) -> None:
         """Enable voice activity detection (future feature)."""

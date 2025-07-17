@@ -142,12 +142,16 @@ This is roughly how the hotword detection flow is planned currently (might chang
 
 6. In the ElevenLabs dashboard, create your custom "TARS" voice and place its Voice ID in the `.env` file.
 
+## Coding conventions
+
+Just make sure the code is clean, tidy, and understandable. The project is big, so we try to minimize complexity.
+
 ## Future Work \& Roadmap
 
 - [ ] **Display**: A display for the TARS robot.
 - [ ] **Improve Noise Cancellation**: Implement software-based noise reduction on the audio stream received from the ESP32.
 - [ ] **Dynamic Configuration of system settings**: Allow system settings (e.g., conversation timeout) to be changed via voice commands.
 - [ ] **Dynamic Configuration of preferences**: Allow to save preferences, possibly in a system of memories (humor setting, personality etc.).
-- [ ] **Handle interruptions**: Interruptions handling (includes echo cancellation (since the mic is listening while the speaker is outputting audio) etc.) 
+- [ ] **Handle interruptions**: Interruptions handling (includes echo cancellation (since the mic is listening while the speaker is outputting audio) etc.)
 
 Potential TARS voice from existing elevenlabs voice: https://elevenlabs.io/app/voice-library?voiceId=qIT7IrVUa21IEiKE1lug
