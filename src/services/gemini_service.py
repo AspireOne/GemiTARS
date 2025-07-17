@@ -88,6 +88,10 @@ class GeminiService:
         # Default configuration with VAD enabled
         self.config: Any = {
             "response_modalities": ["TEXT"],
+            "context_window_compression": (
+                # Configures compression with default parameters.
+                types.ContextWindowCompressionConfig(sliding_window=types.SlidingWindow())
+            ),
             "input_audio_transcription": {},
             "realtime_input_config": {
                 "automatic_activity_detection": {

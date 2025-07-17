@@ -2,7 +2,6 @@
 
 ### ❌ **Not Yet Implemented (To-Do)**
 
-- Disable mic input during when ElevenLabs audio is playing (just like it is disabled when Gemini Live API is streaming output)
 - ESP32 Integration (app-side)
 - ESP32 Software
 

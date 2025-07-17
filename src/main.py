@@ -270,10 +270,10 @@ class TARSAssistant:
 
                 # Handle user transcription
                 if response.transcription_text:
+                    # Reset timeout on any user speech, partial or finished
+                    self.conversation_manager.update_activity()
                     if response.transcription_finished:
                         print(f"\n> You said: {response.transcription_text}\n")
-                        # Reset timeout on user speech
-                        self.conversation_manager.update_activity()
                     else:
                         print(f"> You said: {response.transcription_text}", end="\r")
                         
