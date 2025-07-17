@@ -21,7 +21,7 @@ except ImportError:
         "OpenWakeWord is not installed. Please install it with: pip install openwakeword"
     )
 
-from config import Config
+from config.settings import Config
 
 
 class HotwordService:

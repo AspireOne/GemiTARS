@@ -3,7 +3,7 @@ Simple conversation state management for VAD integration.
 """
 from enum import Enum
 from datetime import datetime, timedelta
-from config import Config
+from config.settings import Config
 
 
 class ConversationState(Enum):

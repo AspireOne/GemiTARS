@@ -18,7 +18,7 @@ from typing import Callable, Optional, Dict, Any
 from dataclasses import dataclass, field, asdict
 
 from .esp32_interface import ESP32ServiceInterface, AudioStreamConfig, ESP32Status
-from config import Config
+from config.settings import Config
 
 
 @dataclass

@@ -17,7 +17,7 @@ from elevenlabs.client import AsyncElevenLabs
 from elevenlabs import VoiceSettings
 from dataclasses import dataclass, field, asdict
 
-from config import Config
+from config.settings import Config
 
 
 @dataclass
