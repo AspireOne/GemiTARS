@@ -239,61 +239,67 @@ class TARSAssistant:
                 print(f"❌ Error in Gemini audio sender: {e}")
             
     async def _gemini_response_handler(self) -> None:
-        """Handle responses from Gemini Live API."""
+        """Handle responses from Gemini Live API by dispatching to helper methods."""
         if not self.gemini_service:
             return
-            
+
         full_response = ""
-        is_processing = False  # Flag to ensure we only transition once per turn
+        is_processing = False
         current_transcription = ""
-        
+
         try:
             async for response in self.gemini_service.receive_responses():
-                # Handle Gemini's text output
                 if response.text:
-                    # On the first text chunk, transition to PROCESSING to mute the mic
-                    if not is_processing:
-                        self.conversation_manager.transition_to(ConversationState.PROCESSING)
-                        is_processing = True
-                    
-                    print(response.text, end="", flush=True)
-                    full_response += response.text
+                    full_response, is_processing = self._handle_gemini_text_chunk(
+                        response.text, full_response, is_processing
+                    )
+
+                if response.transcription_text:
+                    current_transcription = self._handle_transcription_chunk(response, current_transcription)
 
                 if response.is_turn_complete:
-                    if full_response.strip():
-                        print()  # Add newline after complete response
-                        
-                        # NEW: Stream TTS audio for complete response
-                        await self._stream_tts_response(full_response.strip())
-                        
+                    await self._handle_turn_completion(full_response)
                     full_response = ""
-                    is_processing = False  # Reset for the next turn
+                    is_processing = False
                     
-                    # Reset conversation timeout on complete response
-                    self.conversation_manager.update_activity()
-
-                # Handle user transcription with progressive concatenation
-                if response.transcription_text:
-                    self.conversation_manager.update_activity()
-                    
-                    # If this is the start of a new transcription, print the prompt
-                    if not current_transcription:
-                        print("> You said: ", end="", flush=True)
-                    
-                    # Accumulate the transcription text progressively
-                    current_transcription += response.transcription_text
-                    
-                    # Print just the new chunk without overwriting
-                    print(response.transcription_text, end="", flush=True)
-                    
-                    if response.transcription_finished:
-                        print()  # Move to next line when transcription is complete
-                        current_transcription = ""  # Reset for next utterance
-                        
         except asyncio.CancelledError:
             print("🔇 Gemini response handler cancelled")
         except Exception as e:
             print(f"❌ Error in Gemini response handler: {e}")
+
+    def _handle_gemini_text_chunk(self, text: str, full_response: str, is_processing: bool) -> tuple[str, bool]:
+        """Handle a chunk of text from Gemini's response."""
+        if not is_processing:
+            self.conversation_manager.transition_to(ConversationState.PROCESSING)
+            is_processing = True
+        
+        print(text, end="", flush=True)
+        full_response += text
+        return full_response, is_processing
+
+    def _handle_transcription_chunk(self, response, current_transcription: str) -> str:
+        """Handle a chunk of user speech transcription."""
+        self.conversation_manager.update_activity()
+        
+        if not current_transcription:
+            print("> You said: ", end="", flush=True)
+        
+        print(response.transcription_text, end="", flush=True)
+        current_transcription += response.transcription_text
+        
+        if response.transcription_finished:
+            print()
+            current_transcription = ""
+            
+        return current_transcription
+
+    async def _handle_turn_completion(self, full_response: str) -> None:
+        """Handle the completion of a conversational turn."""
+        if full_response.strip():
+            print()  # Add newline after complete response
+            await self._stream_tts_response(full_response.strip())
+            
+        self.conversation_manager.update_activity()
                     
     async def _stream_tts_response(self, text: str) -> None:
         """Stream TTS audio for the given text response."""
