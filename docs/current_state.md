@@ -61,7 +61,6 @@ using the computer's mic etc. ESP32 implementation will be done later.
 
 #### **ESP32 Hardware Integration**
 
-- **Missing**: ESP32 firmware (no `esp32_firmware/` directory found)
 - **Missing**: WiFi communication between ESP32 and server
 - **Missing**: I²S microphone and speaker integration
 - **Missing**: Camera capture for multimodal input
