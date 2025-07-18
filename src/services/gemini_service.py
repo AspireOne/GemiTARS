@@ -92,6 +92,8 @@ class GeminiService:
             ),
             input_audio_transcription=types.AudioTranscriptionConfig(),
             realtime_input_config=types.RealtimeInputConfig(
+                # We do not support interruptions for now. When we do, remove this line!
+                activity_handling=types.ActivityHandling.NO_INTERRUPTION,
                 automatic_activity_detection=types.AutomaticActivityDetection(
                     disabled=False,
                     prefix_padding_ms=Config.VAD_PREFIX_PADDING_MS,

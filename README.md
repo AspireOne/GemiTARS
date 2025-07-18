@@ -57,6 +57,9 @@ Tl;Dr:
 - When gemini live api returns text -> send it to elevenlabs -> stream back it's audio chunks directly to the ESP32
 - If no sound is detected / no reply is coming, time out and return to passive listening mode
 
+note:
+A user cannot interrupt TARS while he is thinking (PROCESSING) or speaking (SPEAKING). If the user says "Stop" or "Wait, I meant something else," the microphone is effectively off. This is a current decision and might be changed in the future.
+
 ### 1. Passive Listening State
 
 - The **Processing Hub** (server) continuously monitors audio streams from the ESP32 for the wake word "Hey, TARS!"
