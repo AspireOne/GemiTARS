@@ -13,7 +13,7 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from services.elevenlabs_service import ElevenLabsService
-from config import Config
+from config.settings import Config
 
 load_dotenv()
 

@@ -11,7 +11,7 @@ This service encapsulates:
 """
 import asyncio
 import os
-from typing import Any, AsyncGenerator, Optional, Callable, AsyncContextManager
+from typing import AsyncGenerator, Optional, Callable, AsyncContextManager
 from google import genai
 from google.genai import types
 from google.genai.live import AsyncSession
