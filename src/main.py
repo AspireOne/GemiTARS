@@ -225,7 +225,7 @@ class TARSAssistant:
         """Manage conversation timeouts and state transitions."""
         while True:
             try:
-                if self.conversation_manager.state in [ConversationState.ACTIVE, ConversationState.PROCESSING]:
+                if self.conversation_manager.state == ConversationState.ACTIVE:
                     # Check for conversation timeout
                     if self.conversation_manager.is_conversation_timeout():
                         logger.info("Conversation timeout, returning to standby.")
@@ -311,7 +311,6 @@ class TARSAssistant:
             print()  # Add newline after complete response
             await self._stream_tts_response(full_response.strip())
             
-        self.conversation_manager.update_activity()
                     
     async def _stream_tts_response(self, text: str) -> None:
         """Stream TTS audio for the given text response."""
@@ -342,6 +341,7 @@ class TARSAssistant:
             logger.error(f"Error in TTS streaming: {e}", exc_info=True)
         finally:
             # 3. IMPORTANT: Always transition back to ACTIVE after speaking/error
+            self.conversation_manager.update_activity()
             if self.conversation_manager.state == ConversationState.SPEAKING:
                 self.conversation_manager.transition_to(ConversationState.ACTIVE)
                     
