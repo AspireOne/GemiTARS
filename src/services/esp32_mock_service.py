@@ -55,8 +55,7 @@ class ESP32MockService(ESP32ServiceInterface):
         # Audio output - streaming approach
         self.audio_output_queue = queue.Queue()
         self.output_stream: Optional[sd.OutputStream] = None
-        self.stream_finished = threading.Event()
-        self.playback_finished = threading.Event()
+        self.playback_finished_event = asyncio.Event()
         self.output_buffer = b''
         
         # Threading and synchronization
@@ -211,15 +210,20 @@ class ESP32MockService(ESP32ServiceInterface):
             self.stats.total_audio_bytes_out += len(audio_data)
             self.status.last_activity = time.time()
 
-    async def wait_for_playback_completion(self):
+    async def wait_for_playback_completion(self) -> None:
         """
-        Waits until the audio output queue is empty and then adds a small
-        delay for the sounddevice buffer to clear.
+        Waits until the audio output queue is empty and the stream has finished playing.
         """
-        while not self.audio_output_queue.empty():
-            await asyncio.sleep(0.05)
-        # Wait a bit for the last chunks in the sounddevice buffer to play
-        await asyncio.sleep(0.2)
+        # 1. Add a final "None" marker to the queue to signal the end of stream.
+        self.audio_output_queue.put(None)
+
+        # 2. Wait for the stream callback to process all data and finish.
+        # This event is set by the finished_callback.
+        await self.playback_finished_event.wait()
+
+        # 3. Clear the event for the next playback session.
+        self.playback_finished_event.clear()
+        logger.debug("Playback completion confirmed.")
     
     async def _start_audio_streaming(self) -> None:
         """Start the audio output stream using the proven streaming approach."""
@@ -265,9 +269,18 @@ class ESP32MockService(ESP32ServiceInterface):
             # Get new data from the queue until we have enough for the frame
             while len(data_to_play) < frames * outdata.itemsize:
                 try:
-                    data_to_play += self.audio_output_queue.get_nowait()
+                    chunk = self.audio_output_queue.get_nowait()
+                    if chunk is None:
+                        # End of stream signal found. Stop filling buffer.
+                        break
+                    data_to_play += chunk
                 except queue.Empty:
-                    break # No more data in the queue
+                    break  # No more data in the queue
+
+            # If there's no data to play, pad with silence and stop the stream.
+            if not data_to_play:
+                outdata.fill(0)
+                raise sd.CallbackStop
 
             # Convert to numpy array
             audio_array = np.frombuffer(data_to_play, dtype=self.audio_config.dtype)
@@ -278,21 +291,28 @@ class ESP32MockService(ESP32ServiceInterface):
                 # Store the remainder for the next callback
                 self.output_buffer = audio_array[frames:].tobytes()
             else:
-                # Pad with silence if not enough data
+                # This is the last chunk. Pad with silence.
                 outdata[:chunk_size] = audio_array.reshape(-1, self.audio_config.channels)
                 outdata[chunk_size:] = 0
+                # Since we've padded, we've run out of data. Stop the stream.
+                raise sd.CallbackStop
 
+        except sd.CallbackStop:
+            raise  # Propagate the stop signal
         except Exception as e:
             logger.error(f"Error in audio callback: {e}", exc_info=True)
             outdata.fill(0)
-            self.output_buffer = b'' # Clear buffer on error
+            self.output_buffer = b''  # Clear buffer on error
+            raise sd.CallbackStop  # Stop the stream on error
     
     def _stream_finished_callback(self):
         """Called when the output stream finishes."""
         logger.info("Audio output stream finished")
         with self._lock:
             self.status.audio_playing = False
-        self.playback_finished.set()
+        # Safely set the event from a different thread
+        if self.loop:
+            self.loop.call_soon_threadsafe(self.playback_finished_event.set)
     
     async def stop_audio_playback(self) -> None:
         """Stop audio playback and clear queue."""
