@@ -13,7 +13,7 @@ import asyncio
 import os
 from typing import Any, AsyncGenerator, Optional, Callable
 from google import genai
-from google.genai import types
+from google.genai import types 
 
 from config.settings import Config
 from utils.logger import setup_logger
@@ -79,29 +79,30 @@ class GeminiService:
         self.audio_queue = asyncio.Queue()
 
         # Default configuration with VAD enabled
-        self.config: Any = {
-            "response_modalities": ["TEXT"],
-            "context_window_compression": (
-                # Configures compression with default parameters.
-                types.ContextWindowCompressionConfig(sliding_window=types.SlidingWindow())
+        self.config: types.LiveConnectConfig = types.LiveConnectConfig(
+            response_modalities=[types.Modality.TEXT],
+            context_window_compression=types.ContextWindowCompressionConfig(
+                sliding_window=types.SlidingWindow()
             ),
-            "input_audio_transcription": {},
-            "realtime_input_config": {
-                "automatic_activity_detection": {
-                    "disabled": False,
-                    "prefix_padding_ms": Config.VAD_PREFIX_PADDING_MS,
-                    "silence_duration_ms": Config.VAD_SILENCE_DURATION_MS,
-                }
-            }
-        }
+            input_audio_transcription=types.AudioTranscriptionConfig(),
+            realtime_input_config=types.RealtimeInputConfig(
+                automatic_activity_detection=types.AutomaticActivityDetection(
+                    disabled=False,
+                    prefix_padding_ms=Config.VAD_PREFIX_PADDING_MS,
+                    silence_duration_ms=Config.VAD_SILENCE_DURATION_MS,
+                )
+            )
+        )
 
         # Extension points for future features
         self.function_registry = {}
         self.response_handlers = []
         
     def set_config(self, config: dict) -> None:
-        """Update the session configuration."""
-        self.config.update(config)
+        """
+        Update the session configuration by creating a new model with updated values.
+        """
+        self.config = self.config.model_copy(update=config)
         
     def add_function(self, name: str, function: Callable) -> None:
         """Register a function for function calling (future feature)."""
