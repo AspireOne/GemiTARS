@@ -2,11 +2,8 @@ google-genai
 python-dotenv
 sounddevice
 numpy
-pandas
 requests
 openwakeword
 elevenlabs
 elevenlabs[pyaudio]
-pyaudio
-pydub
 colorlog
