@@ -60,7 +60,7 @@ Tl;Dr:
 ### 1. Passive Listening State
 
 - The **Processing Hub** (server) continuously monitors audio streams from the ESP32 for the wake word "Hey, TARS!"
-- Uses **Porcupine hotword detection** running locally on the server for low-latency, offline wake word recognition
+- Uses **Hotword detection** running locally on the server for low-latency, offline wake word recognition
 - The ESP32 streams raw audio data over WiFi to the server at all times, but the server only processes it for hotword detection (NOTE: This is still an internal discussion - whether to stream audio at all times, hampering battery life and privacy, or try to put a hotword detection model directly on the ESP32 itself OR have the ESP32 only start streaming audio to the server after sound is detected (would require buffered mic))
 - System remains in low-power conversation mode, with minimal processing overhead
 

@@ -9,6 +9,7 @@ This service encapsulates:
 - Configuration management
 - Extension points for function calling and multimodal features
 """
+
 import asyncio
 import os
 from typing import AsyncGenerator, Optional, Callable, AsyncContextManager
