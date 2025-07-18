@@ -43,8 +43,7 @@ class TARSAssistant:
     4. State transitions and timeouts
     """
     
-    def __init__(self, api_key: str):
-        self.api_key = api_key
+    def __init__(self):
         
         # Core services
         self.hotword_service = HotwordService()
@@ -183,7 +182,6 @@ class TARSAssistant:
         # Initialize and start Gemini session
         try:
             self.gemini_service = GeminiService(
-                api_key=self.api_key,
                 system_prompt=Config.SYSTEM_PROMPT
             )
             await self.gemini_service.start_session()
@@ -408,16 +406,8 @@ class TARSAssistant:
 
 async def main() -> None:
     """Main entry point."""
-    # Check for API key
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise RuntimeError(
-            "GEMINI_API_KEY environment variable is not set. "
-            "Please set it in your environment or in a .env file."
-        )
-    
     # Create and run TARS assistant
-    assistant = TARSAssistant(api_key)
+    assistant = TARSAssistant()
     await assistant.run()
 
 

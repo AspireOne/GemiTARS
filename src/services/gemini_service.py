@@ -62,20 +62,22 @@ class GeminiService:
     - Configuration
     """
     
-    def __init__(self, api_key: str, model: str = Config.DEFAULT_MODEL,
+    def __init__(self, model: str = Config.DEFAULT_MODEL,
                  system_prompt: Optional[str] = None):
         """
         Initialize the Gemini service.
 
         Args:
-            api_key: Google API key for Gemini
             model: Model name to use (default: Config.DEFAULT_MODEL)
             system_prompt: The system prompt to send to the model at the start of the session
         """
-        self.api_key = api_key
+        self.api_key = os.environ.get("GEMINI_API_KEY")
+        if not self.api_key:
+            raise ValueError("GEMINI_API_KEY not found in environment.")
+        
         self.model = model
         self.system_prompt = system_prompt
-        self.client = genai.Client(api_key=api_key)
+        self.client = genai.Client(api_key=self.api_key)
         self.session: Optional[AsyncSession] = None
         self._connection_manager: Optional[AsyncContextManager[AsyncSession]] = None
         self.audio_queue = asyncio.Queue()
