@@ -11,9 +11,10 @@ This service encapsulates:
 """
 import asyncio
 import os
-from typing import Any, AsyncGenerator, Optional, Callable
+from typing import Any, AsyncGenerator, Optional, Callable, AsyncContextManager
 from google import genai
-from google.genai import types 
+from google.genai import types
+from google.genai.live import AsyncSession
 
 from config.settings import Config
 from utils.logger import setup_logger
@@ -74,8 +75,8 @@ class GeminiService:
         self.model = model
         self.system_prompt = system_prompt
         self.client = genai.Client(api_key=api_key)
-        self.session: Optional[Any] = None
-        self._connection_manager: Optional[Any] = None
+        self.session: Optional[AsyncSession] = None
+        self._connection_manager: Optional[AsyncContextManager[AsyncSession]] = None
         self.audio_queue = asyncio.Queue()
 
         # Default configuration with VAD enabled
@@ -161,7 +162,7 @@ class GeminiService:
         # This is a placeholder for future multimodal functionality
         # Implementation will depend on Gemini Live API updates
         await self.session.send_realtime_input(
-            image=types.Blob(data=image_data, mime_type=mime_type)
+            media=types.Blob(data=image_data, mime_type=mime_type)
         )
         
     async def receive_responses(self) -> AsyncGenerator[GeminiResponse, None]:
