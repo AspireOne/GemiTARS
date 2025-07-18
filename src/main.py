@@ -59,10 +59,9 @@ class TARSAssistant:
         # Setup hotword activation callback
         self.hotword_service.set_activation_callback(self._on_hotword_detected)
         
-        # Task references for cleanup
-        self.conversation_task: Optional[asyncio.Task] = None
-        self.gemini_sender_task: Optional[asyncio.Task] = None
-        self.gemini_receiver_task: Optional[asyncio.Task] = None
+        # Task management
+        self.persistent_tasks = set()
+        self.session_tasks = set()
         
     async def run(self) -> None:
         """Main TARS assistant execution loop."""
@@ -76,16 +75,18 @@ class TARSAssistant:
             await self._initialize_esp32_service()
             await self._initialize_elevenlabs_service()
             
+            # Start persistent background tasks
+            self._create_task(self._conversation_management_loop(), self.persistent_tasks)
+            
             # Start in passive listening mode
             await self._enter_passive_mode()
-            
-            # Start concurrent tasks
-            self.conversation_task = asyncio.create_task(self._conversation_management_loop())
             
             logger.info(f"TARS is ready! Say '{Config.HOTWORD_MODEL}' to activate.")
             logger.info("Press Ctrl+C to exit.")
             
-            await self.conversation_task
+            # Wait for all persistent tasks to complete
+            if self.persistent_tasks:
+                await asyncio.gather(*self.persistent_tasks)
             
         except Exception as e:
             logger.error(f"An error occurred: {e}", exc_info=True)
@@ -154,11 +155,10 @@ class TARSAssistant:
             finally:
                 self.gemini_service = None
             
-        # Cancel Gemini-related tasks
-        if self.gemini_sender_task and not self.gemini_sender_task.done():
-            self.gemini_sender_task.cancel()
-        if self.gemini_receiver_task and not self.gemini_receiver_task.done():
-            self.gemini_receiver_task.cancel()
+        # Cancel all session-specific tasks
+        for task in list(self.session_tasks):
+            task.cancel()
+        self.session_tasks.clear()
             
         # Start audio streaming for hotword detection
         if self.esp32_service:
@@ -190,8 +190,8 @@ class TARSAssistant:
             self.conversation_manager.transition_to(ConversationState.ACTIVE)
             
             # Start Gemini audio processing tasks
-            self.gemini_sender_task = asyncio.create_task(self._gemini_audio_sender())
-            self.gemini_receiver_task = asyncio.create_task(self._gemini_response_handler())
+            self._create_task(self._gemini_audio_sender(), self.session_tasks)
+            self._create_task(self._gemini_response_handler(), self.session_tasks)
             
             # Play acknowledgment
             logger.info("Listening...")
@@ -214,6 +214,13 @@ class TARSAssistant:
             else:
                 logger.warning("No event loop available for activation")
         
+    def _create_task(self, coro, task_set):
+        """Create an asyncio task, add it to a set, and set up a callback for cleanup."""
+        task = asyncio.create_task(coro)
+        task_set.add(task)
+        task.add_done_callback(task_set.discard)
+        return task
+
     async def _conversation_management_loop(self) -> None:
         """Manage conversation timeouts and state transitions."""
         while True:
@@ -339,20 +346,15 @@ class TARSAssistant:
         """Clean up resources."""
         logger.info("Shutting down...")
         
-        # Cancel all tasks
-        tasks_to_cancel = [
-            self.conversation_task,
-            self.gemini_sender_task,
-            self.gemini_receiver_task
-        ]
-        
-        for task in tasks_to_cancel:
-            if task and not task.done():
+        # Cancel all background tasks
+        all_tasks = self.persistent_tasks.union(self.session_tasks)
+        for task in all_tasks:
+            if not task.done():
                 task.cancel()
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass
+        
+        # Wait for all tasks to be cancelled
+        if all_tasks:
+            await asyncio.gather(*all_tasks, return_exceptions=True)
         
         # Shutdown ESP32 service
         if self.esp32_service:
