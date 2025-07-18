@@ -25,7 +25,7 @@ logger = setup_logger(os.path.splitext(os.path.basename(__file__))[0])
 class GeminiResponse:
     """Wrapper for Gemini API responses with processed data."""
     
-    def __init__(self, raw_response: Any):
+    def __init__(self, raw_response: types.LiveServerMessage):
         self.raw_response = raw_response
         self.text = raw_response.text if raw_response.text else ""
         self.is_turn_complete = (
@@ -37,10 +37,10 @@ class GeminiResponse:
         self.transcription_text = ""
         self.transcription_finished = False
         if (raw_response.server_content and
-            raw_response.server_content.input_transcription and
-            raw_response.server_content.input_transcription.text):
+            raw_response.server_content.input_transcription):
             transcript = raw_response.server_content.input_transcription
-            self.transcription_text = transcript.text.strip()
+            if transcript.text:
+                self.transcription_text = transcript.text
             self.transcription_finished = transcript.finished
             
         # Handle interruption detection (separate from transcription)
