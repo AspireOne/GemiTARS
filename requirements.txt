@@ -9,3 +9,4 @@ elevenlabs
 elevenlabs[pyaudio]
 pyaudio
 pydub
+colorlog

@@ -18,6 +18,9 @@ from elevenlabs import VoiceSettings
 from dataclasses import dataclass, field, asdict
 
 from config.settings import Config
+from utils.logger import setup_logger
+
+logger = setup_logger(os.path.splitext(os.path.basename(__file__))[0])
 
 
 @dataclass
@@ -48,7 +51,7 @@ class ElevenLabsService:
     
     async def initialize(self) -> None:
         """Initialize the ElevenLabs service."""
-        print("🔊 ElevenLabs: Initializing TTS service...")
+        logger.info("Initializing TTS service...")
         
         # Get API key from environment
         api_key = os.environ.get("ELEVENLABS_API_KEY")
@@ -62,25 +65,25 @@ class ElevenLabsService:
         try:
             self.client = AsyncElevenLabs(api_key=api_key)
             self.is_initialized = True
-            print("✅ ElevenLabs: TTS service initialized successfully")
+            logger.info("TTS service initialized successfully")
             
         except Exception as e:
             error_msg = f"Failed to initialize ElevenLabs client: {e}"
-            print(f"❌ ElevenLabs: {error_msg}")
+            logger.error(error_msg)
             self.stats.errors += 1
             self.stats.last_error = error_msg
             raise
     
     async def shutdown(self) -> None:
         """Clean shutdown of the ElevenLabs service."""
-        print("🔄 ElevenLabs: Shutting down...")
+        logger.info("Shutting down...")
         
         if self.client:
             # AsyncElevenLabs client doesn't need explicit shutdown
             self.client = None
         
         self.is_initialized = False
-        print("✅ ElevenLabs: Shutdown complete")
+        logger.info("Shutdown complete")
     
     async def stream_tts(self, text: str) -> AsyncGenerator[bytes, None]:
         """
@@ -100,11 +103,11 @@ class ElevenLabsService:
             raise RuntimeError("ElevenLabs service is not initialized")
         
         if not text or not text.strip():
-            print("⚠️ ElevenLabs: Empty text provided, skipping TTS")
+            logger.warning("Empty text provided, skipping TTS")
             return
         
         text = text.strip()
-        print(f"🎵 ElevenLabs: Starting TTS for text: '{text[:50]}{'...' if len(text) > 50 else ''}'")
+        logger.info(f"Starting TTS for text: '{text[:50]}{'...' if len(text) > 50 else ''}'")
         
         # Update statistics
         self.stats.tts_requests += 1
@@ -138,11 +141,11 @@ class ElevenLabsService:
                     # Stream chunk directly - format is already pcm_16000
                     yield chunk
             
-            print(f"✅ ElevenLabs: TTS completed, generated {chunk_count} audio chunks")
+            logger.info(f"TTS completed, generated {chunk_count} audio chunks")
             
         except Exception as e:
             error_msg = f"TTS streaming failed: {e}"
-            print(f"❌ ElevenLabs: {error_msg}")
+            logger.error(error_msg)
             self.stats.errors += 1
             self.stats.last_error = error_msg
             raise

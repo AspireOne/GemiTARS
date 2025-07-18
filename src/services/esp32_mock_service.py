@@ -14,11 +14,15 @@ import sounddevice as sd
 import threading
 import time
 import queue
+import os
 from typing import Callable, Optional, Dict, Any
 from dataclasses import dataclass, field, asdict
 
 from .esp32_interface import ESP32ServiceInterface, AudioStreamConfig, ESP32Status
 from config.settings import Config
+from utils.logger import setup_logger
+
+logger = setup_logger(os.path.splitext(os.path.basename(__file__))[0])
 
 
 @dataclass
@@ -63,7 +67,7 @@ class ESP32MockService(ESP32ServiceInterface):
     
     async def initialize(self) -> None:
         """Initialize the streaming ESP32 service."""
-        print("🔌 ESP32 Streaming: Initializing...")
+        logger.info("Initializing...")
         
         # Store event loop for thread-safe operations
         self.loop = asyncio.get_running_loop()
@@ -77,11 +81,11 @@ class ESP32MockService(ESP32ServiceInterface):
             self.status.last_activity = time.time()
             self.stats.connection_time = time.time()
         
-        print("✅ ESP32 Streaming: Initialized successfully")
+        logger.info("Initialized successfully")
     
     async def shutdown(self) -> None:
         """Clean shutdown of streaming service."""
-        print("🔄 ESP32 Streaming: Shutting down...")
+        logger.info("Shutting down...")
         
         # Stop audio streaming
         await self.stop_audio_streaming()
@@ -93,17 +97,17 @@ class ESP32MockService(ESP32ServiceInterface):
             self.status.audio_streaming = False
             self.status.audio_playing = False
         
-        print("✅ ESP32 Streaming: Shutdown complete")
+        logger.info("Shutdown complete")
     
     async def start_audio_streaming(self) -> None:
         """Start audio streaming from PC microphone."""
         if self.status.audio_streaming:
-            print("⚠️ ESP32 Streaming: Audio streaming already active")
+            logger.warning("Audio streaming already active")
             return
         
         def audio_callback(indata, frames, time_info, status):
             if status:
-                print(f"⚠️ ESP32 Streaming: Audio input status: {status}")
+                logger.warning(f"Audio input status: {status}")
                 
             # Convert audio data to bytes
             audio_bytes = indata.tobytes()
@@ -122,9 +126,9 @@ class ESP32MockService(ESP32ServiceInterface):
                             self.audio_callback, audio_bytes
                         )
                     except Exception as e:
-                        print(f"⚠️ Error in audio callback: {e}")
+                        logger.warning(f"Error in audio callback: {e}")
                 else:
-                    print("⚠️ No event loop available for audio callback")
+                    logger.warning("No event loop available for audio callback")
         
         try:
             # Create and start input stream
@@ -143,11 +147,11 @@ class ESP32MockService(ESP32ServiceInterface):
                 self.status.audio_streaming = True
                 self.status.last_activity = time.time()
             
-            print("🎤 ESP32 Streaming: Audio streaming started")
+            logger.info("Audio streaming started")
             
         except Exception as e:
             error_msg = f"Failed to start audio streaming: {e}"
-            print(f"❌ ESP32 Streaming: {error_msg}")
+            logger.error(error_msg)
             
             with self._lock:
                 self.status.error_count += 1
@@ -171,11 +175,11 @@ class ESP32MockService(ESP32ServiceInterface):
                 self.status.audio_streaming = False
                 self.status.last_activity = time.time()
             
-            print("🔇 ESP32 Streaming: Audio streaming stopped")
+            logger.info("Audio streaming stopped")
             
         except Exception as e:
             error_msg = f"Error stopping audio streaming: {e}"
-            print(f"⚠️ ESP32 Streaming: {error_msg}")
+            logger.warning(error_msg)
             
             with self._lock:
                 self.status.error_count += 1
@@ -185,12 +189,12 @@ class ESP32MockService(ESP32ServiceInterface):
         """Set callback for incoming audio data."""
         with self._lock:
             self.audio_callback = callback
-        print("🔗 ESP32 Streaming: Audio callback registered")
+        logger.info("Audio callback registered")
     
     async def play_audio_chunk(self, audio_data: bytes) -> None:
         """Queue audio chunk for streaming playback."""
         if not self.status.is_connected:
-            print("⚠️ ESP32 Streaming: Cannot play audio - not connected")
+            logger.warning("Cannot play audio - not connected")
             return
         
         # Add to output queue
@@ -221,7 +225,7 @@ class ESP32MockService(ESP32ServiceInterface):
         if self.output_stream and self.output_stream.active:
             return  # Already streaming
         
-        print("🎵 ESP32 Streaming: Starting audio output stream...")
+        logger.info("Starting audio output stream...")
         
         try:
             with self._lock:
@@ -237,11 +241,11 @@ class ESP32MockService(ESP32ServiceInterface):
             )
             
             self.output_stream.start()
-            print("✅ ESP32 Streaming: Audio output stream started")
+            logger.info("Audio output stream started")
             
         except Exception as e:
             error_msg = f"Failed to start audio output stream: {e}"
-            print(f"❌ ESP32 Streaming: {error_msg}")
+            logger.error(error_msg)
             
             with self._lock:
                 self.status.error_count += 1
@@ -251,7 +255,7 @@ class ESP32MockService(ESP32ServiceInterface):
     def _audio_output_callback(self, outdata, frames, time, status):
         """Audio output callback - processes queued audio chunks."""
         if status:
-            print(f"🔊 ESP32 Streaming: Audio output status: {status}")
+            logger.debug(f"Audio output status: {status}")
 
         try:
             # Get all available data from the queue
@@ -291,12 +295,12 @@ class ESP32MockService(ESP32ServiceInterface):
                     outdata.fill(0)
                     
         except Exception as e:
-            print(f"❌ ESP32 Streaming: Error in audio callback: {e}")
+            logger.error(f"Error in audio callback: {e}")
             outdata.fill(0)
     
     def _stream_finished_callback(self):
         """Called when the output stream finishes."""
-        print("🔇 ESP32 Streaming: Audio output stream finished")
+        logger.info("Audio output stream finished")
         with self._lock:
             self.status.audio_playing = False
         self.playback_finished.set()
@@ -319,12 +323,12 @@ class ESP32MockService(ESP32ServiceInterface):
         with self._lock:
             self.status.audio_playing = False
         
-        print("🔇 ESP32 Streaming: Audio playback stopped")
+        logger.info("Audio playback stopped")
     
     async def capture_image(self) -> Optional[bytes]:
         """Simulate image capture (placeholder for future implementation)."""
         # For now, return None to indicate no camera available
-        print("📷 ESP32 Streaming: Image capture not implemented yet")
+        logger.info("Image capture not implemented yet")
         return None
     
     def get_status(self) -> Dict[str, Any]:

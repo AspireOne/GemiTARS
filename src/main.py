@@ -23,8 +23,11 @@ from services.elevenlabs_service import ElevenLabsService
 from services.hotword_service import HotwordService
 from core.conversation_state import ConversationManager, ConversationState
 from config.settings import Config
+from utils.logger import setup_logger
 
 load_dotenv()
+
+logger = setup_logger(__name__)
 
 
 class TARSAssistant:
@@ -63,8 +66,7 @@ class TARSAssistant:
         
     async def run(self) -> None:
         """Main TARS assistant execution loop."""
-        print("🤖 TARS Assistant starting...")
-        print("🔧 Initializing ESP32 service...")
+        logger.info("TARS Assistant starting...")
         
         # Store event loop reference for thread-safe operations
         self.loop = asyncio.get_running_loop()
@@ -80,13 +82,13 @@ class TARSAssistant:
             # Start concurrent tasks
             self.conversation_task = asyncio.create_task(self._conversation_management_loop())
             
-            print(f"\n🎯 TARS is ready! Say '{Config.HOTWORD_MODEL}' to activate.")
-            print("Press Ctrl+C to exit.")
+            logger.info(f"TARS is ready! Say '{Config.HOTWORD_MODEL}' to activate.")
+            logger.info("Press Ctrl+C to exit.")
             
             await self.conversation_task
             
         except Exception as e:
-            print(f"\n❌ An error occurred: {e}")
+            logger.error(f"An error occurred: {e}", exc_info=True)
         finally:
             await self._cleanup()
     
@@ -101,9 +103,9 @@ class TARSAssistant:
         try:
             await self.esp32_service.initialize()
             self.esp32_service.set_audio_callback(self._route_audio_based_on_state)
-            print("✅ ESP32 service initialized successfully")
+            logger.info("ESP32 service initialized successfully")
         except Exception as e:
-            print(f"❌ Failed to initialize ESP32 service: {e}")
+            logger.error(f"Failed to initialize ESP32 service: {e}", exc_info=True)
             self.esp32_service = None
             raise
     
@@ -112,10 +114,10 @@ class TARSAssistant:
         try:
             self.elevenlabs_service = ElevenLabsService()
             await self.elevenlabs_service.initialize()
-            print("✅ ElevenLabs service initialized successfully")
+            logger.info("ElevenLabs service initialized successfully")
         except Exception as e:
-            print(f"❌ Failed to initialize ElevenLabs service: {e}")
-            print("⚠️ TTS will be disabled, continuing with text-only responses")
+            logger.error(f"Failed to initialize ElevenLabs service: {e}", exc_info=True)
+            logger.warning("TTS will be disabled, continuing with text-only responses")
             self.elevenlabs_service = None
             # Don't raise - allow system to continue without TTS
         
@@ -134,11 +136,11 @@ class TARSAssistant:
             
             # In all other states (PROCESSING, SPEAKING), audio is ignored.
         except Exception as e:
-            print(f"⚠️ Error routing audio: {e}")
+            logger.warning(f"Error routing audio: {e}")
             
     async def _enter_passive_mode(self) -> None:
         """Enter passive listening mode (hotword detection)."""
-        print("💤 TARS: Entering passive listening mode...")
+        logger.info("Entering passive listening mode...")
         
         # Close any active Gemini session
         if self.gemini_service:
@@ -148,7 +150,7 @@ class TARSAssistant:
                 if self.esp32_service:
                     await self.esp32_service.stop_audio_playback()
             except Exception as e:
-                print(f"⚠️ Error closing Gemini session: {e}")
+                logger.warning(f"Error closing Gemini session: {e}")
             finally:
                 self.gemini_service = None
             
@@ -167,11 +169,11 @@ class TARSAssistant:
         self.hotword_service.start_detection()
         self.conversation_manager.transition_to(ConversationState.PASSIVE)
         
-        print(f"🎤 Listening for '{Config.HOTWORD_MODEL}'...")
+        logger.info(f"Listening for '{Config.HOTWORD_MODEL}'...")
         
     async def _enter_active_mode(self) -> None:
         """Enter active conversation mode."""
-        print("🚀 TARS: Activating conversation mode...")
+        logger.info("Activating conversation mode...")
         
         # Stop hotword detection
         self.hotword_service.stop_detection()
@@ -192,11 +194,11 @@ class TARSAssistant:
             self.gemini_receiver_task = asyncio.create_task(self._gemini_response_handler())
             
             # Play acknowledgment
-            print(f"🎤 TARS: Listening...")
+            logger.info("Listening...")
             # TODO: At the end of the project, add random audio as acknowledgment ("hmh", "listening", "yes?" etc.)
             
         except Exception as e:
-            print(f"❌ Error activating conversation mode: {e}")
+            logger.error(f"Error activating conversation mode: {e}", exc_info=True)
             # Fall back to passive mode on error
             await self._enter_passive_mode()
         
@@ -210,7 +212,7 @@ class TARSAssistant:
                     lambda: asyncio.create_task(self._enter_active_mode())
                 )
             else:
-                print("⚠️ No event loop available for activation")
+                logger.warning("No event loop available for activation")
         
     async def _conversation_management_loop(self) -> None:
         """Manage conversation timeouts and state transitions."""
@@ -219,13 +221,13 @@ class TARSAssistant:
                 if self.conversation_manager.state in [ConversationState.ACTIVE, ConversationState.PROCESSING]:
                     # Check for conversation timeout
                     if self.conversation_manager.is_conversation_timeout():
-                        print("⏰ TARS: Conversation timeout, returning to standby.")
+                        logger.info("Conversation timeout, returning to standby.")
                         await self._enter_passive_mode()
                         
                 await asyncio.sleep(1)  # Check every second
                 
             except Exception as e:
-                print(f"⚠️ Error in conversation management: {e}")
+                logger.warning(f"Error in conversation management: {e}")
                 await asyncio.sleep(1)
             
     async def _gemini_audio_sender(self) -> None:
@@ -234,9 +236,9 @@ class TARSAssistant:
             try:
                 await self.gemini_service.start_audio_sender()
             except asyncio.CancelledError:
-                print("🔇 Gemini audio sender cancelled")
+                logger.debug("Gemini audio sender cancelled")
             except Exception as e:
-                print(f"❌ Error in Gemini audio sender: {e}")
+                logger.error(f"Error in Gemini audio sender: {e}", exc_info=True)
             
     async def _gemini_response_handler(self) -> None:
         """Handle responses from Gemini Live API by dispatching to helper methods."""
@@ -263,9 +265,9 @@ class TARSAssistant:
                     is_processing = False
                     
         except asyncio.CancelledError:
-            print("🔇 Gemini response handler cancelled")
+            logger.debug("Gemini response handler cancelled")
         except Exception as e:
-            print(f"❌ Error in Gemini response handler: {e}")
+            logger.error(f"Error in Gemini response handler: {e}", exc_info=True)
 
     def _handle_gemini_text_chunk(self, text: str, full_response: str, is_processing: bool) -> tuple[str, bool]:
         """Handle a chunk of text from Gemini's response."""
@@ -304,7 +306,7 @@ class TARSAssistant:
     async def _stream_tts_response(self, text: str) -> None:
         """Stream TTS audio for the given text response."""
         if not self.elevenlabs_service or not self.esp32_service:
-            print("⚠️ TTS or ESP32 service not available, skipping voice output")
+            logger.warning("TTS or ESP32 service not available, skipping voice output")
             # If services are unavailable, transition back to ACTIVE immediately
             self.conversation_manager.transition_to(ConversationState.ACTIVE)
             return
@@ -313,7 +315,7 @@ class TARSAssistant:
             # 1. Transition from PROCESSING to SPEAKING
             self.conversation_manager.transition_to(ConversationState.SPEAKING)
             
-            print(f"🎵 TARS: Converting to speech and streaming...")
+            logger.info("Converting to speech and streaming...")
             
             # 2. Stream TTS audio
             chunk_count = 0
@@ -324,10 +326,10 @@ class TARSAssistant:
             # Wait for the audio queue to be fully processed
             await self.esp32_service.wait_for_playback_completion()
             
-            print(f"✅ TARS: Voice output completed ({chunk_count} chunks)")
+            logger.info(f"Voice output completed ({chunk_count} chunks)")
     
         except Exception as e:
-            print(f"❌ Error in TTS streaming: {e}")
+            logger.error(f"Error in TTS streaming: {e}", exc_info=True)
         finally:
             # 3. IMPORTANT: Always transition back to ACTIVE after speaking/error
             if self.conversation_manager.state == ConversationState.SPEAKING:
@@ -335,7 +337,7 @@ class TARSAssistant:
                     
     async def _cleanup(self) -> None:
         """Clean up resources."""
-        print("\n🔄 TARS: Shutting down...")
+        logger.info("Shutting down...")
         
         # Cancel all tasks
         tasks_to_cancel = [
@@ -357,26 +359,26 @@ class TARSAssistant:
             try:
                 await self.esp32_service.shutdown()
             except Exception as e:
-                print(f"⚠️ Error shutting down ESP32 service: {e}")
+                logger.warning(f"Error shutting down ESP32 service: {e}")
             
         # Close Gemini service
         if self.gemini_service:
             try:
                 await self.gemini_service.close_session()
             except Exception as e:
-                print(f"⚠️ Error closing Gemini service: {e}")
+                logger.warning(f"Error closing Gemini service: {e}")
         
         # Shutdown ElevenLabs service
         if self.elevenlabs_service:
             try:
                 await self.elevenlabs_service.shutdown()
             except Exception as e:
-                print(f"⚠️ Error shutting down ElevenLabs service: {e}")
+                logger.warning(f"Error shutting down ElevenLabs service: {e}")
             
         # Stop hotword detection
         self.hotword_service.stop_detection()
         
-        print("✅ TARS: Shutdown complete")
+        logger.info("Shutdown complete")
 
     def get_status(self) -> dict:
         """Get current status of TARS assistant."""
@@ -410,6 +412,6 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\n👋 TARS: Goodbye!")
+        logger.info("Goodbye!")
     except Exception as e:
-        print(f"\n💥 Fatal error: {e}")
+        logger.critical(f"Fatal error: {e}", exc_info=True)

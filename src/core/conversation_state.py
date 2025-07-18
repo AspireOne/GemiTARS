@@ -1,9 +1,14 @@
 """
 Simple conversation state management for VAD integration.
 """
+import os
 from enum import Enum
 from datetime import datetime, timedelta
+
 from config.settings import Config
+from utils.logger import setup_logger
+
+logger = setup_logger(os.path.splitext(os.path.basename(__file__))[0])
 
 
 class ConversationState(Enum):
@@ -34,7 +39,7 @@ class ConversationManager:
         self.state = new_state
         self.last_activity = datetime.now()
         
-        print(f"State transition: {old_state.value} -> {new_state.value}")
+        logger.info(f"State transition: {old_state.value} -> {new_state.value}")
         
     def is_conversation_timeout(self) -> bool:
         """Check if conversation has timed out."""
