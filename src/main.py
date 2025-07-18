@@ -200,6 +200,7 @@ class TARSAssistant:
         except Exception as e:
             logger.error(f"Error activating conversation mode: {e}", exc_info=True)
             # Fall back to passive mode on error
+            self.gemini_service = None
             await self._enter_passive_mode()
         
     def _on_hotword_detected(self) -> None:

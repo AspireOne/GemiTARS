@@ -198,8 +198,13 @@ class GeminiService:
         while True:
             try:
                 audio_chunk_bytes = await self.audio_queue.get()
+                if audio_chunk_bytes is None: # Add a way to gracefully exit
+                    break
                 await self.send_audio(audio_chunk_bytes)
                 self.audio_queue.task_done()
+            except asyncio.CancelledError:
+                logger.debug("Audio sender task cancelled.")
+                break # Or just re-raise
             except Exception:
                 logger.exception("Error in audio sender")
                 
