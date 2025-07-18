@@ -42,10 +42,7 @@ class ConversationManager:
         logger.info(f"State transition: {old_state.value} -> {new_state.value}")
         
     def is_conversation_timeout(self) -> bool:
-        """Check if conversation has timed out."""
-        if self.state == ConversationState.PASSIVE:
-            return False
-            
+        """Check if time since last activity exceeds the timeout."""
         time_since_activity = datetime.now() - self.last_activity
         return time_since_activity > timedelta(seconds=self.conversation_timeout)
     def update_activity(self) -> None:
