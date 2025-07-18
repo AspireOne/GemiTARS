@@ -352,9 +352,15 @@ class TARSAssistant:
             if not task.done():
                 task.cancel()
         
-        # Wait for all tasks to be cancelled
+        # Wait for all tasks to be cancelled, with a timeout
         if all_tasks:
-            await asyncio.gather(*all_tasks, return_exceptions=True)
+            try:
+                await asyncio.wait_for(
+                    asyncio.gather(*all_tasks, return_exceptions=True),
+                    timeout=5.0  # 5-second timeout for graceful shutdown
+                )
+            except asyncio.TimeoutError:
+                logger.warning("Shutdown timeout: Some tasks did not exit gracefully.")
         
         # Shutdown ESP32 service
         if self.esp32_service:
