@@ -57,5 +57,5 @@ Begin now. Respond only as TARS. This is not a simulation. This is an order.
     ELEVENLABS_MODEL_ID = "eleven_flash_v2_5"  # Ultra-low latency model
     ELEVENLABS_OUTPUT_FORMAT = "pcm_16000"      # 16kHz PCM for optimal ESP32 performance
     ELEVENLABS_CHUNK_SIZE = 1024                # Streaming chunk size
-    ELEVENLABS_STABILITY = 0.5                  # Voice stability (0-1)
+    ELEVENLABS_STABILITY = 0.75                  # Voice stability (0-1)
     ELEVENLABS_SIMILARITY_BOOST = 0.75          # Voice similarity (0-1) - match demo

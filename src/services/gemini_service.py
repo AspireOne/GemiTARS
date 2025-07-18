@@ -85,6 +85,8 @@ class GeminiService:
         # Default configuration with VAD enabled
         self.config: types.LiveConnectConfig = types.LiveConnectConfig(
             response_modalities=[types.Modality.TEXT],
+            system_instruction=[f"{self.system_prompt}"], 
+            temperature=0.9,
             context_window_compression=types.ContextWindowCompressionConfig(
                 sliding_window=types.SlidingWindow()
             ),
@@ -94,8 +96,16 @@ class GeminiService:
                     disabled=False,
                     prefix_padding_ms=Config.VAD_PREFIX_PADDING_MS,
                     silence_duration_ms=Config.VAD_SILENCE_DURATION_MS,
+                    start_of_speech_sensitivity=types.StartSensitivity.START_SENSITIVITY_HIGH,
+                    # end_of_speech_sensitivity=
                 )
             )
+            # Not supported with this model, but if we ever switch, turn this on (especially the frequency penalty)
+            # generation_config=types.GenerationConfig(
+            #     frequency_penalty=0.3,
+            #     enable_affective_dialog=True,
+            #     temperature=0.9,  
+            # ),
         )
 
         # Extension points for future features
@@ -123,14 +133,6 @@ class GeminiService:
 
         # Use the async context manager logic
         await self.__aenter__()
-
-        # Send system prompt if it exists
-        if self.system_prompt and self.session:
-            await self.session.send_client_content(
-                turns=[{"role": "user", "parts": [{"text": f"[System prompt - your personality: \n\n{self.system_prompt}\n\nIf you understand, only reply with empty whitespace 'huh'!]"}]}],
-                # TODO: This is bad because itcauses an instant reply, sent to elevenlabs etc. and also adds initial delay, but when it's false, then the prompt is not applied... We need to fix it.
-                turn_complete=True
-            )
         
     async def close_session(self) -> None:
         """Close the current session."""
