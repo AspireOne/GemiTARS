@@ -57,6 +57,7 @@ class ESP32MockService(ESP32ServiceInterface):
         self.output_stream: Optional[sd.OutputStream] = None
         self.stream_finished = threading.Event()
         self.playback_finished = threading.Event()
+        self.output_buffer = b''
         
         # Threading and synchronization
         self.loop: Optional[asyncio.AbstractEventLoop] = None
@@ -253,50 +254,38 @@ class ESP32MockService(ESP32ServiceInterface):
                 self.status.audio_playing = False
     
     def _audio_output_callback(self, outdata, frames, time, status):
-        """Audio output callback - processes queued audio chunks."""
         if status:
-            logger.debug(f"Audio output status: {status}")
+            logger.warning(f"Audio output status: {status}")
 
         try:
-            # Get all available data from the queue
-            data = b''
-            while not self.audio_output_queue.empty():
+            # Prepend leftover data from the last call
+            data_to_play = self.output_buffer
+            self.output_buffer = b''
+
+            # Get new data from the queue until we have enough for the frame
+            while len(data_to_play) < frames * outdata.itemsize:
                 try:
-                    data += self.audio_output_queue.get_nowait()
+                    data_to_play += self.audio_output_queue.get_nowait()
                 except queue.Empty:
-                    break
-            
-            # Convert bytes to numpy array
-            if data:
-                audio_array = np.frombuffer(data, dtype=self.audio_config.dtype)
-                chunk_size = len(audio_array)
-                
-                if chunk_size >= frames:
-                    outdata[:] = audio_array[:frames].reshape(-1, self.audio_config.channels)
-                    # Put the remaining audio back into the queue as bytes
-                    remaining_bytes = audio_array[frames:].tobytes()
-                    if len(remaining_bytes) > 0:
-                        # Put remaining data back at front of queue
-                        q = list(self.audio_output_queue.queue)
-                        self.audio_output_queue = queue.Queue()
-                        self.audio_output_queue.put(remaining_bytes)
-                        for item in q:
-                            self.audio_output_queue.put(item)
-                else:
-                    # Pad with silence if not enough data
-                    outdata[:chunk_size] = audio_array.reshape(-1, self.audio_config.channels)
-                    outdata[chunk_size:] = 0
+                    break # No more data in the queue
+
+            # Convert to numpy array
+            audio_array = np.frombuffer(data_to_play, dtype=self.audio_config.dtype)
+            chunk_size = len(audio_array)
+
+            if chunk_size >= frames:
+                outdata[:] = audio_array[:frames].reshape(-1, self.audio_config.channels)
+                # Store the remainder for the next callback
+                self.output_buffer = audio_array[frames:].tobytes()
             else:
-                # No data available - check if we should stop
-                if self.audio_output_queue.empty():
-                    # Output silence and continue waiting for more data
-                    outdata.fill(0)
-                else:
-                    outdata.fill(0)
-                    
+                # Pad with silence if not enough data
+                outdata[:chunk_size] = audio_array.reshape(-1, self.audio_config.channels)
+                outdata[chunk_size:] = 0
+
         except Exception as e:
-            logger.error(f"Error in audio callback: {e}")
+            logger.error(f"Error in audio callback: {e}", exc_info=True)
             outdata.fill(0)
+            self.output_buffer = b'' # Clear buffer on error
     
     def _stream_finished_callback(self):
         """Called when the output stream finishes."""
