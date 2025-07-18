@@ -13,6 +13,7 @@ Usage: python src/main_with_hotword.py
 import os
 import asyncio
 from typing import Optional
+from websockets.exceptions import ConnectionClosedOK
 
 from dotenv import load_dotenv
 
@@ -24,6 +25,7 @@ from services.hotword_service import HotwordService
 from core.conversation_state import ConversationManager, ConversationState
 from config.settings import Config
 from utils.logger import setup_logger
+
 
 load_dotenv()
 
@@ -242,6 +244,9 @@ class TARSAssistant:
         if self.gemini_service:
             try:
                 await self.gemini_service.start_audio_sender()
+            except ConnectionClosedOK:
+                # This is an expected closure when the session times out or is otherwise gracefully terminated.
+                logger.info("Gemini session closed normally.")
             except asyncio.CancelledError:
                 logger.debug("Gemini audio sender cancelled")
             except Exception as e:
