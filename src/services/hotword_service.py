@@ -10,7 +10,7 @@ This service provides:
 """
 
 import numpy as np
-from typing import Optional, Callable
+from typing import Optional, Callable, List
 import threading
 import time
 import collections
@@ -40,15 +40,15 @@ class HotwordService:
     - Resource-efficient processing with rolling audio buffer
     """
     
-    def __init__(self, wake_word: str = Config.HOTWORD_MODEL, threshold: float = Config.HOTWORD_THRESHOLD):
+    def __init__(self, wake_words: List[str] = Config.HOTWORD_MODELS, threshold: float = Config.HOTWORD_THRESHOLD):
         """
         Initialize hotword detection service.
         
         Args:
-            wake_word: Wake word model name (default from config)
+            wake_words: A list of wake word model paths (default from config)
             threshold: Detection confidence threshold (0.0-1.0)
         """
-        self.wake_word = wake_word
+        self.wake_words = wake_words
         self.threshold = threshold
         self.is_active = False
         self.activation_callback: Optional[Callable] = None
@@ -64,15 +64,16 @@ class HotwordService:
         self.buffer_max_seconds = Config.HOTWORD_BUFFER_SECONDS  # 2.0 seconds
         
         # Initialize OpenWakeWord model
-        logger.info(f"Initializing hotword detection with model: {wake_word}")
+        wakeword_names = [os.path.splitext(os.path.basename(w))[0] for w in wake_words]
+        logger.info(f"Initializing hotword detection with models: {wakeword_names}")
         try:
             self.model = Model(
-                wakeword_models=[wake_word],
+                wakeword_models=wake_words,
                 inference_framework='onnx'  # CPU-optimized
             )
-            logger.info(f"Hotword model '{wake_word}' loaded successfully")
+            logger.info(f"Hotword models '{wakeword_names}' loaded successfully")
         except Exception as e:
-            logger.error(f"Failed to load hotword model '{wake_word}': {e}")
+            logger.error(f"Failed to load hotword models '{wakeword_names}': {e}")
             raise
         
         # Calculate buffer management parameters
@@ -101,7 +102,8 @@ class HotwordService:
             self._clear_model_buffer()
             # Reset cooldown timer to prevent immediate re-detection
             self.last_detection_time = time.time()
-        logger.info(f"Hotword detection started - listening for '{self.wake_word}'...")
+        wakeword_names = [os.path.splitext(os.path.basename(w))[0] for w in self.wake_words]
+        logger.info(f"Hotword detection started - listening for '{wakeword_names}'...")
         
     def stop_detection(self) -> None:
         """Stop hotword detection."""
@@ -177,38 +179,42 @@ class HotwordService:
             
             # Check prediction buffer for wake word scores
             # Based on official OpenWakeWord implementation
-            confidence = 0.0
+            max_confidence = 0.0
             
-            if hasattr(self.model, 'prediction_buffer') and self.wake_word in self.model.prediction_buffer:
-                # Get the latest score for our wake word
-                scores = list(self.model.prediction_buffer[self.wake_word])
-                if scores:
-                    confidence = scores[-1]  # Latest prediction score
-            
-            if confidence >= self.threshold:
-                # Check cooldown to prevent multiple rapid detections
-                current_time = time.time()
-                if current_time - self.last_detection_time < self.cooldown_seconds:
-                    logger.info(f"Hotword detected but in cooldown period ({self.cooldown_seconds}s)")
-                    return False
+            for wake_word_path in self.wake_words:
+                model_name = os.path.splitext(os.path.basename(wake_word_path))[0]
                 
-                # Update last detection time
-                self.last_detection_time = current_time
-                
-                logger.info(f"Hotword detected! '{self.wake_word}' (confidence: {confidence:.3f})")
-                
-                # Execute activation callback if set
-                if self.activation_callback:
-                    try:
-                        self.activation_callback()
-                    except Exception as e:
-                        logger.warning(f"Error in activation callback: {e}")
-                
-                return True
-            else:
-                # Optional: Log low-confidence detections for debugging
-                if confidence > 0.1:  # Only log if there's some confidence
-                    logger.debug(f"Low confidence detection: {confidence:.3f} (threshold: {self.threshold})")
+                if hasattr(self.model, 'prediction_buffer') and model_name in self.model.prediction_buffer:
+                    # Get the latest score for our wake word
+                    scores = list(self.model.prediction_buffer[model_name])
+                    if scores:
+                        confidence = scores[-1]  # Latest prediction score
+                        max_confidence = max(max_confidence, confidence)
+
+                        if confidence >= self.threshold:
+                            # Check cooldown to prevent multiple rapid detections
+                            current_time = time.time()
+                            if current_time - self.last_detection_time < self.cooldown_seconds:
+                                logger.info(f"Hotword '{model_name}' detected but in cooldown period ({self.cooldown_seconds}s)")
+                                return False
+                            
+                            # Update last detection time
+                            self.last_detection_time = current_time
+                            
+                            logger.info(f"Hotword detected! '{model_name}' (confidence: {confidence:.3f})")
+                            
+                            # Execute activation callback if set
+                            if self.activation_callback:
+                                try:
+                                    self.activation_callback()
+                                except Exception as e:
+                                    logger.warning(f"Error in activation callback: {e}")
+                            
+                            return True
+
+            # Optional: Log low-confidence detections for debugging
+            if max_confidence > 0.1:  # Only log if there's some confidence
+                logger.debug(f"Low confidence detection: {max_confidence:.3f} (threshold: {self.threshold})")
                         
         except Exception as e:
             logger.error(f"Error during hotword detection: {e}")
@@ -225,7 +231,7 @@ class HotwordService:
         with self._lock:
             return {
                 "is_active": self.is_active,
-                "wake_word": self.wake_word,
+                "wake_words": self.wake_words,
                 "threshold": self.threshold,
                 "buffer_size": len(self.audio_buffer),
                 "buffer_seconds": len(self.audio_buffer) / self.sample_rate if self.audio_buffer else 0,

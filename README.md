@@ -8,7 +8,28 @@ This file provides overview and high level goals/features and architecture of th
 - To see full documentation about Gemini Live API, see [`docs/gemini/`](docs/gemini/).
 - The ESP32 firmware is in [`esp32_firmware/`](esp32_firmware/).
 - [`src/resources/tars_voice_clips`](src/resources/tars_voice_clips) contains most of tars' lines from the original movie with the voice isolated. Can
- be used to train a model for voice cloning.
+ be used to train a model for voice cloning. Below are the timestamps of when TARS was speaking in the movie (like 80% of all the lines):
+
+- 44:31 - 44:39,
+- 52:41 - 52:48,
+- 52:53 - 52:57,
+- 53:00 - 53:02,
+- 53:05 - 53:08,
+- 1:05:18 - 1:05:22,
+- 1:14:24 - 1:14:29,
+- 1:40:00 - 1:40:03,
+- 1:40:17 - 1:40:19,
+- 1:40:22 - 1:40:27,
+- 1:47:06 - 1:47:11,
+- 1:47:15 - 1:47:18,
+- 1:47:19 - 1:47:24,
+- 1:47:25 - 1:47:27,
+- 2:26:56 - 2:27:03,
+- 2:27:08 - 2:27:17,
+- 2:27:17 - 2:27:27,
+- 2:38:39 - 2:38:46,
+- 2:38:52 - 2:38:56,
+- 2:39:20 - 2:39:25,
 
 ## Core Features Overview
 

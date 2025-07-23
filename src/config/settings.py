@@ -1,4 +1,5 @@
 import logging
+import os
 
 """
 Simple centralized configuration for GemiTARS.
@@ -46,7 +47,8 @@ Begin now. Respond only as TARS. This is not a simulation. This is an order.
     CONVERSATION_TIMEOUT_SECONDS = 30
     
     # Hotword Detection Settings
-    HOTWORD_MODEL = "alexa"  # Using the default Alexa model you downloaded
+    # "alexa",
+    HOTWORD_MODELS = [os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'resources', 'Hey_Tars.onnx'))]
     HOTWORD_THRESHOLD = 0.4
     HOTWORD_BUFFER_SECONDS = 1.5 # How long does it take to say? + buffer
     HOTWORD_REDETECTION_TIMEOUT_SECONDS = 2

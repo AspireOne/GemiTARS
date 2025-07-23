@@ -82,7 +82,7 @@ class TARSAssistant:
             # Start in passive listening mode
             await self._enter_passive_mode()
             
-            logger.info(f"TARS is ready! Say '{Config.HOTWORD_MODEL}' to activate.")
+            logger.info(f"TARS is ready! Say the wake word to activate.")
             logger.info("Press Ctrl+C to exit.")
             
             # Wait for all persistent tasks to complete
@@ -170,7 +170,7 @@ class TARSAssistant:
         self.hotword_service.start_detection()
         self.conversation_manager.transition_to(ConversationState.PASSIVE)
         
-        logger.info(f"Listening for '{Config.HOTWORD_MODEL}'...")
+        logger.info(f"Listening for wake word...")
         
     async def _enter_active_mode(self) -> None:
         """Enter active conversation mode."""
@@ -181,9 +181,7 @@ class TARSAssistant:
         
         # Initialize and start Gemini session
         try:
-            self.gemini_service = GeminiService(
-                system_prompt=Config.SYSTEM_PROMPT
-            )
+            self.gemini_service = GeminiService(system_prompt=Config.SYSTEM_PROMPT)
             await self.gemini_service.start_session()
             
             # Transition to active conversation
