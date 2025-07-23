@@ -47,11 +47,11 @@ Begin now. Respond only as TARS. This is not a simulation. This is an order.
     CONVERSATION_TIMEOUT_SECONDS = 30
     
     # Hotword Detection Settings
-    
     HOTWORD_MODELS = ["alexa", os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'resources', 'Hey_Tars.onnx'))]
     HOTWORD_THRESHOLD = 0.4
     HOTWORD_BUFFER_SECONDS = 1.5 # How long does it take to say? + buffer
     HOTWORD_REDETECTION_TIMEOUT_SECONDS = 2
+    HOTWORD_DEBUG_LOGGING = False  # Enable detailed confidence logging for debugging
     
     # ESP32 Service Settings
     ESP32_SERVICE_TYPE = "mock"  # "mock" or "real"

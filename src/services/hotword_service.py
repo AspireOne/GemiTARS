@@ -53,6 +53,7 @@ class HotwordService:
         self.is_active = False
         self.activation_callback: Optional[Callable] = None
         self._lock = threading.Lock()
+        self.debug_logging = Config.HOTWORD_DEBUG_LOGGING
         
         # Cooldown mechanism to prevent multiple rapid detections
         self.last_detection_time = 0.0
@@ -64,16 +65,16 @@ class HotwordService:
         self.buffer_max_seconds = Config.HOTWORD_BUFFER_SECONDS  # 2.0 seconds
         
         # Initialize OpenWakeWord model
-        wakeword_names = [os.path.splitext(os.path.basename(w))[0] for w in wake_words]
-        logger.info(f"Initializing hotword detection with models: {wakeword_names}")
+        self.wakeword_names = [os.path.splitext(os.path.basename(w))[0] if os.path.exists(w) else w for w in wake_words]
+        logger.info(f"Initializing hotword detection with models: {self.wakeword_names}")
         try:
             self.model = Model(
                 wakeword_models=wake_words,
                 inference_framework='onnx'  # CPU-optimized
             )
-            logger.info(f"Hotword models '{wakeword_names}' loaded successfully")
+            logger.info(f"Hotword models '{self.wakeword_names}' loaded successfully")
         except Exception as e:
-            logger.error(f"Failed to load hotword models '{wakeword_names}': {e}")
+            logger.error(f"Failed to load hotword models '{self.wakeword_names}': {e}")
             raise
         
         # Calculate buffer management parameters
@@ -102,8 +103,7 @@ class HotwordService:
             self._clear_model_buffer()
             # Reset cooldown timer to prevent immediate re-detection
             self.last_detection_time = time.time()
-        wakeword_names = [os.path.splitext(os.path.basename(w))[0] for w in self.wake_words]
-        logger.info(f"Hotword detection started - listening for '{wakeword_names}'...")
+        logger.info(f"Hotword detection started - listening for '{self.wakeword_names}'...")
         
     def stop_detection(self) -> None:
         """Stop hotword detection."""
@@ -181,29 +181,35 @@ class HotwordService:
             # Based on official OpenWakeWord implementation
             max_confidence = 0.0
             
-            for wake_word_path in self.wake_words:
-                model_name = os.path.splitext(os.path.basename(wake_word_path))[0]
-                
-                if hasattr(self.model, 'prediction_buffer') and model_name in self.model.prediction_buffer:
-                    # Get the latest score for our wake word
+            if not hasattr(self.model, 'prediction_buffer'):
+                logger.warning("Model has no prediction_buffer attribute!")
+                return False
+
+            if self.debug_logging:
+                prediction_keys = list(self.model.prediction_buffer.keys())
+                logger.debug(f"Checking prediction buffer with keys: {prediction_keys}")
+
+            for model_name in self.wakeword_names:
+                if self.debug_logging:
+                    logger.debug(f"Processing model: '{model_name}'")
+                if model_name in self.model.prediction_buffer:
                     scores = list(self.model.prediction_buffer[model_name])
                     if scores:
                         confidence = scores[-1]  # Latest prediction score
+                        if self.debug_logging:
+                            logger.debug(f"Model '{model_name}' raw confidence: {confidence:.4f}")
                         max_confidence = max(max_confidence, confidence)
 
                         if confidence >= self.threshold:
-                            # Check cooldown to prevent multiple rapid detections
                             current_time = time.time()
                             if current_time - self.last_detection_time < self.cooldown_seconds:
                                 logger.info(f"Hotword '{model_name}' detected but in cooldown period ({self.cooldown_seconds}s)")
                                 return False
                             
-                            # Update last detection time
                             self.last_detection_time = current_time
                             
                             logger.info(f"Hotword detected! '{model_name}' (confidence: {confidence:.3f})")
                             
-                            # Execute activation callback if set
                             if self.activation_callback:
                                 try:
                                     self.activation_callback()
@@ -211,10 +217,12 @@ class HotwordService:
                                     logger.warning(f"Error in activation callback: {e}")
                             
                             return True
+                else:
+                    if self.debug_logging:
+                        logger.warning(f"Model name '{model_name}' not found in prediction buffer keys.")
 
-            # Optional: Log low-confidence detections for debugging
-            if max_confidence > 0.1:  # Only log if there's some confidence
-                logger.debug(f"Low confidence detection: {max_confidence:.3f} (threshold: {self.threshold})")
+            if self.debug_logging and max_confidence > 0.05:  # Lowered threshold for logging
+                logger.debug(f"Max confidence this cycle: {max_confidence:.4f} (threshold: {self.threshold})")
                         
         except Exception as e:
             logger.error(f"Error during hotword detection: {e}")
@@ -251,3 +259,14 @@ class HotwordService:
             logger.info(f"Hotword threshold updated to: {threshold}")
         else:
             logger.warning(f"Invalid threshold: {threshold}. Must be between 0.0 and 1.0")
+            
+    def set_debug_logging(self, enabled: bool) -> None:
+        """
+        Enable or disable detailed debug logging.
+        
+        Args:
+            enabled: True to enable detailed logging, False to disable
+        """
+        with self._lock:
+            self.debug_logging = enabled
+        logger.info(f"Hotword debug logging {'enabled' if enabled else 'disabled'}")
