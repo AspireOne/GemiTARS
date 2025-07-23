@@ -55,7 +55,7 @@ Begin now. Respond only as TARS. This is not a simulation. This is an order.
     ESP32_SERVICE_TYPE = "mock"  # "mock" or "real"
     
     # ElevenLabs TTS Settings
-    ELEVENLABS_VOICE_ID = "dXtC3XhB9GtPusIpNtQx"
+    ELEVENLABS_VOICE_ID = "zsUvyVKkEvpw5ZMnMU2I" #"dXtC3XhB9GtPusIpNtQx"
     ELEVENLABS_MODEL_ID = "eleven_flash_v2_5"  # Ultra-low latency model
     ELEVENLABS_OUTPUT_FORMAT = "pcm_16000"      # 16kHz PCM for optimal ESP32 performance
     ELEVENLABS_CHUNK_SIZE = 1024                # Streaming chunk size
