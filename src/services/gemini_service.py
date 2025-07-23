@@ -94,6 +94,8 @@ class GeminiService:
             realtime_input_config=types.RealtimeInputConfig(
                 # We do not support interruptions for now. When we do, remove this line!
                 activity_handling=types.ActivityHandling.NO_INTERRUPTION,
+                # Not sure if useful for anything...
+                # turn_coverage=types.TurnCoverage.TURN_INCLUDES_ALL_INPUT,
                 automatic_activity_detection=types.AutomaticActivityDetection(
                     disabled=False,
                     prefix_padding_ms=Config.VAD_PREFIX_PADDING_MS,

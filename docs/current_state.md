@@ -2,6 +2,7 @@
 
 ### ❌ **Not Yet Implemented (To-Do)**
 
+- Turn coverage?? (https://www.reddit.com/r/Bard/comments/1krxs58/what_does_this_mean_in_ai_studio/)
 - ESP32 Integration (app-side)
 - ESP32 Software
 

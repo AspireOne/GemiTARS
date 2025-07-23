@@ -301,7 +301,6 @@ class TARSAssistant:
         current_transcription += response.transcription_text
         
         if response.transcription_finished:
-            print()
             current_transcription = ""
             
         return current_transcription
@@ -309,7 +308,7 @@ class TARSAssistant:
     async def _handle_turn_completion(self, full_response: str) -> None:
         """Handle the completion of a conversational turn."""
         if full_response.strip():
-            print()  # Add newline after complete response
+            print()  # Add newline after complete response from the LLM
             await self._stream_tts_response(full_response.strip())
             
                     
