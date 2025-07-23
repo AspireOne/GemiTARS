@@ -7,6 +7,8 @@ This file provides overview and high level goals/features and architecture of th
 - **To see the current state/progress of the project** (what is already implemented, what needs to be implemented etc.), **see** [`docs/current_state.md`](docs/current_state.md).
 - To see full documentation about Gemini Live API, see [`docs/gemini/`](docs/gemini/).
 - The ESP32 firmware is in [`esp32_firmware/`](esp32_firmware/).
+- [`src/resources/tars_voice_clips`](src/resources/tars_voice_clips) contains most of tars' lines from the original movie with the voice isolated. Can
+ be used to train a model for voice cloning.
 
 ## Core Features Overview
 
