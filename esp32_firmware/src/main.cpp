@@ -9,23 +9,28 @@
 
 // 2. I2S CONFIGURATION
 #define I2S_SAMPLE_RATE 16000
-#define I2S_BITS_PER_SAMPLE I2S_BITS_PER_SAMPLE_32BIT
+#define I2S_BITS_PER_SAMPLE I2S_BITS_PER_SAMPLE_16BIT // Using 16-bit for WAV file compatibility
 #define I2S_CHANNEL_FORMAT I2S_CHANNEL_FMT_ONLY_LEFT // For mono INMP441 with L/R pin connected to GND
 
-// 3. Buffer
+// 3. Recording Configuration
+#define RECORD_DURATION_SECONDS 5
+const int RECORD_BUFFER_SIZE = I2S_SAMPLE_RATE * RECORD_DURATION_SECONDS * sizeof(int16_t);
+
+// 4. I2S Buffer
 #define I2S_BUFFER_SIZE 1024
-int32_t i2s_buffer[I2S_BUFFER_SIZE];
+int16_t i2s_buffer[I2S_BUFFER_SIZE];
 
 void setup() {
-  Serial.begin(115200);
-  Serial.println("--- Final INMP441 Test Firmware ---");
+  Serial.begin(921600); // Increased baud rate for high-speed data transfer
+  Serial.println("--- INMP441 Audio Recorder ---");
+  Serial.println("Send 'r' to start a 5-second recording.");
 
   i2s_config_t i2s_config = {
       .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
       .sample_rate = I2S_SAMPLE_RATE,
       .bits_per_sample = I2S_BITS_PER_SAMPLE,
       .channel_format = I2S_CHANNEL_FORMAT,
-      .communication_format = I2S_COMM_FORMAT_STAND_MSB, // For Left-Justified data
+      .communication_format = I2S_COMM_FORMAT_STAND_I2S, // Standard I2S for 16-bit
       .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
       .dma_buf_count = 8,
       .dma_buf_len = 64,
@@ -54,19 +59,83 @@ void setup() {
   }
 
   i2s_zero_dma_buffer(I2S_PORT);
-  Serial.println("I2S driver installed and buffer cleared. Starting read loop.");
+  Serial.println("I2S driver installed. Ready to record.");
+}
+
+void record_audio() {
+  Serial.println("Recording...");
+
+  int total_bytes_read = 0;
+  size_t bytes_read_in_chunk = 0;
+
+  while (total_bytes_read < RECORD_BUFFER_SIZE) {
+    esp_err_t result = i2s_read(I2S_PORT, &i2s_buffer, sizeof(i2s_buffer), &bytes_read_in_chunk, portMAX_DELAY);
+
+    if (result == ESP_OK && bytes_read_in_chunk > 0) {
+      // Write the raw audio data directly to the serial port
+      Serial.write((const uint8_t*)i2s_buffer, bytes_read_in_chunk);
+      total_bytes_read += bytes_read_in_chunk;
+    }
+  }
+  
+  Serial.println("Recording finished.");
+}
+
+void print_samples_continuously() {
+  Serial.println("Starting continuous sample printing. Send any character to stop.");
+  
+  // Clear the serial buffer before starting
+  while(Serial.available()) Serial.read();
+
+  while (Serial.available() == 0) {
+    size_t bytes_read = 0;
+    esp_err_t result = i2s_read(I2S_PORT, &i2s_buffer, sizeof(i2s_buffer), &bytes_read, portMAX_DELAY);
+
+    if (result == ESP_OK && bytes_read > 0) {
+      int samples_read = bytes_read / sizeof(int16_t);
+      for (int i = 0; i < samples_read; i++) {
+        Serial.println(i2s_buffer[i]);
+      }
+    }
+  }
+  // Clear the buffer again after stopping
+  while(Serial.available()) Serial.read();
+  Serial.println("Stopped continuous printing.");
+  Serial.println("Send 'r' to record or 'd' to print samples.");
+}
+
+
+void stream_audio_continuously() {
+  Serial.println("Starting live audio stream. Stop the Python script to exit.");
+  
+  // Clear the serial buffer before starting
+  while(Serial.available()) Serial.read();
+
+  while (Serial.available() == 0) {
+    size_t bytes_read = 0;
+    esp_err_t result = i2s_read(I2S_PORT, &i2s_buffer, sizeof(i2s_buffer), &bytes_read, portMAX_DELAY);
+
+    if (result == ESP_OK && bytes_read > 0) {
+      // Write the raw audio data directly to the serial port
+      Serial.write((const uint8_t*)i2s_buffer, bytes_read);
+    }
+  }
+  // Clear the buffer again after stopping
+  while(Serial.available()) Serial.read();
+  Serial.println("Stopped live audio stream.");
+  Serial.println("Send 'r' to record, 'd' to print samples, or 'l' to stream.");
 }
 
 void loop() {
-  size_t bytes_read = 0;
-  esp_err_t result = i2s_read(I2S_PORT, &i2s_buffer, sizeof(i2s_buffer), &bytes_read, portMAX_DELAY);
-
-  if (result == ESP_OK && bytes_read > 0) {
-    int samples_read = bytes_read / sizeof(int32_t);
-    for (int i = 0; i < samples_read; i++) {
-      // Right-shift the 32-bit sample to get the 24-bit value
-      int32_t sample = i2s_buffer[i] >> 8;
-      Serial.println(sample);
+  // Check if there's a command from the serial port
+  if (Serial.available() > 0) {
+    char cmd = Serial.read();
+    if (cmd == 'r') {
+      record_audio();
+    } else if (cmd == 'd') {
+      print_samples_continuously();
+    } else if (cmd == 'l') {
+      stream_audio_continuously();
     }
   }
 }
