@@ -18,10 +18,9 @@ from websockets.exceptions import ConnectionClosedOK
 from dotenv import load_dotenv
 
 from services.gemini_service import GeminiService
-from services.esp32_interface import ESP32ServiceInterface
-from services.esp32_mock_service import ESP32MockService
+from services.pi_interface import PiInterfaceService
+from services.pi_websocket_service import PiWebsocketService
 from services.elevenlabs_service import ElevenLabsService
-from services._hotword_service_deprecated import HotwordService
 from core.conversation_state import ConversationManager, ConversationState
 from config.settings import Config
 from utils.logger import setup_logger
@@ -46,19 +45,15 @@ class TARSAssistant:
     def __init__(self):
         
         # Core services
-        self.hotword_service = HotwordService()
         self.gemini_service: Optional[GeminiService] = None
         self.elevenlabs_service: Optional[ElevenLabsService] = None
         self.conversation_manager = ConversationManager()
         
-        # ESP32 service (mock or real)
-        self.esp32_service: Optional[ESP32ServiceInterface] = None
+        # Pi communication service
+        self.pi_service: PiInterfaceService = PiWebsocketService()
         
         # Event loop reference for thread-safe operations
         self.loop: Optional[asyncio.AbstractEventLoop] = None
-        
-        # Setup hotword activation callback
-        self.hotword_service.set_activation_callback(self._on_hotword_detected)
         
         # Task management
         self.persistent_tasks = set()
@@ -73,16 +68,24 @@ class TARSAssistant:
         
         try:
             # Initialize services
-            await self._initialize_esp32_service()
             await self._initialize_elevenlabs_service()
             
             # Start persistent background tasks
             self._create_task(self._conversation_management_loop(), self.persistent_tasks)
-            
-            # Start in passive listening mode
-            await self._enter_passive_mode()
-            
-            logger.info(f"TARS is ready! Say the wake word to activate.")
+
+            # The pi_service will be initialized and run here, blocking until exit.
+            # It takes callbacks to interact with the assistant.
+            if self.pi_service:
+                logger.info("Starting Pi Interface Service...")
+                await self.pi_service.initialize(
+                    hotword_callback=self._enter_active_mode,
+                    audio_callback=self._on_audio_chunk_received
+                )
+            else:
+                logger.critical("Pi Interface Service not initialized. Exiting.")
+                return
+
+            logger.info(f"TARS is ready and waiting for a client connection...")
             logger.info("Press Ctrl+C to exit.")
             
             # Wait for all persistent tasks to complete
@@ -94,22 +97,6 @@ class TARSAssistant:
         finally:
             await self._cleanup()
     
-    async def _initialize_esp32_service(self) -> None:
-        """Initialize ESP32 service based on configuration."""
-        if Config.ESP32_SERVICE_TYPE == "mock":
-            self.esp32_service = ESP32MockService()
-        else:
-            # Future: ESP32RealService
-            raise NotImplementedError("Real ESP32 service not implemented yet")
-        
-        try:
-            await self.esp32_service.initialize()
-            self.esp32_service.set_audio_callback(self._route_audio_based_on_state)
-            logger.info("ESP32 service initialized successfully")
-        except Exception as e:
-            logger.error(f"Failed to initialize ESP32 service: {e}", exc_info=True)
-            self.esp32_service = None
-            raise
     
     async def _initialize_elevenlabs_service(self) -> None:
         """Initialize ElevenLabs TTS service."""
@@ -123,34 +110,22 @@ class TARSAssistant:
             self.elevenlabs_service = None
             # Don't raise - allow system to continue without TTS
         
-    def _route_audio_based_on_state(self, audio_bytes: bytes) -> None:
-        """Route audio based on current conversation state."""
-        state = self.conversation_manager.state
-        try:
-            if state == ConversationState.PASSIVE:
-                # Route to hotword detection
-                self.hotword_service.process_audio_chunk(audio_bytes)
-    
-            elif state == ConversationState.ACTIVE:
-                # Route to Gemini Live API
-                if self.gemini_service:
-                    self.gemini_service.queue_audio(audio_bytes)
-            
-            # In all other states (PROCESSING, SPEAKING), audio is ignored.
-        except Exception as e:
-            logger.warning(f"Error routing audio: {e}")
+    def _on_audio_chunk_received(self, audio_bytes: bytes) -> None:
+        """Callback to handle incoming audio chunks from the Pi."""
+        # Route audio to Gemini Live API if in the right state
+        if self.conversation_manager.state == ConversationState.ACTIVE:
+            if self.gemini_service:
+                self.gemini_service.queue_audio(audio_bytes)
+        # In all other states, audio is ignored.
             
     async def _enter_passive_mode(self) -> None:
-        """Enter passive listening mode (hotword detection)."""
-        logger.info("Entering passive listening mode...")
+        """End a conversation and return to a passive state."""
+        logger.info("Conversation ended. Returning to passive state.")
         
         # Close any active Gemini session
         if self.gemini_service:
             try:
                 await self.gemini_service.close_session()
-                # Stop audio output
-                if self.esp32_service:
-                    await self.esp32_service.stop_audio_playback()
             except Exception as e:
                 logger.warning(f"Error closing Gemini session: {e}")
             finally:
@@ -161,23 +136,18 @@ class TARSAssistant:
             task.cancel()
         self.session_tasks.clear()
             
-        # Start audio streaming for hotword detection
-        if self.esp32_service:
-            # Only start if not already streaming
-            status = self.esp32_service.get_status()
-            if not status.get('audio_streaming', False):
-                await self.esp32_service.start_audio_streaming()
-        self.hotword_service.start_detection()
         self.conversation_manager.transition_to(ConversationState.PASSIVE)
         
-        logger.info(f"Listening for wake word...")
+        logger.info(f"Ready for next activation.")
         
     async def _enter_active_mode(self) -> None:
-        """Enter active conversation mode."""
-        logger.info("Activating conversation mode...")
-        
-        # Stop hotword detection
-        self.hotword_service.stop_detection()
+        """Enter active conversation mode, triggered by the client."""
+        # Only activate if we're in passive mode
+        if self.conversation_manager.state != ConversationState.PASSIVE:
+            logger.warning("Attempted to activate conversation while not in passive state. Ignoring.")
+            return
+
+        logger.info("Hotword detected by client. Activating conversation mode...")
         
         # Initialize and start Gemini session
         try:
@@ -191,9 +161,7 @@ class TARSAssistant:
             self._create_task(self._gemini_audio_sender(), self.session_tasks)
             self._create_task(self._gemini_response_handler(), self.session_tasks)
             
-            # Play acknowledgment
-            logger.info("Listening...")
-            # TODO: At the end of the project, add random audio as acknowledgment ("hmh", "listening", "yes?" etc.)
+            logger.info("Listening for user speech...")
             
         except Exception as e:
             logger.error(f"Error activating conversation mode: {e}", exc_info=True)
@@ -201,17 +169,6 @@ class TARSAssistant:
             self.gemini_service = None
             await self._enter_passive_mode()
         
-    def _on_hotword_detected(self) -> None:
-        """Callback executed when hotword is detected."""
-        # Only activate if we're in passive mode
-        if self.conversation_manager.state == ConversationState.PASSIVE:
-            # Schedule transition to active mode using stored event loop
-            if self.loop:
-                self.loop.call_soon_threadsafe(
-                    lambda: asyncio.create_task(self._enter_active_mode())
-                )
-            else:
-                logger.warning("No event loop available for activation")
         
     def _create_task(self, coro, task_set):
         """Create an asyncio task, add it to a set, and set up a callback for cleanup."""
@@ -312,7 +269,7 @@ class TARSAssistant:
                     
     async def _stream_tts_response(self, text: str) -> None:
         """Stream TTS audio for the given text response."""
-        if not self.elevenlabs_service or not self.esp32_service:
+        if not self.elevenlabs_service or not self.pi_service:
             logger.warning("TTS or ESP32 service not available, skipping voice output")
             # If services are unavailable, transition back to ACTIVE immediately
             self.conversation_manager.transition_to(ConversationState.ACTIVE)
@@ -327,11 +284,11 @@ class TARSAssistant:
             # 2. Stream TTS audio
             chunk_count = 0
             async for audio_chunk in self.elevenlabs_service.stream_tts(text):
-                await self.esp32_service.play_audio_chunk(audio_chunk)
+                await self.pi_service.play_audio_chunk(audio_chunk)
                 chunk_count += 1
             
             # Wait for the audio queue to be fully processed
-            await self.esp32_service.wait_for_playback_completion()
+            await self.pi_service.wait_for_playback_completion()
             
             logger.info(f"Voice output completed ({chunk_count} chunks)")
     
@@ -363,12 +320,12 @@ class TARSAssistant:
             except asyncio.TimeoutError:
                 logger.warning("Shutdown timeout: Some tasks did not exit gracefully.")
         
-        # Shutdown ESP32 service
-        if self.esp32_service:
+        # Shutdown Pi service
+        if self.pi_service:
             try:
-                await self.esp32_service.shutdown()
+                await self.pi_service.shutdown()
             except Exception as e:
-                logger.warning(f"Error shutting down ESP32 service: {e}")
+                logger.warning(f"Error shutting down Pi service: {e}")
             
         # Close Gemini service
         if self.gemini_service:
@@ -384,8 +341,6 @@ class TARSAssistant:
             except Exception as e:
                 logger.warning(f"Error shutting down ElevenLabs service: {e}")
             
-        # Stop hotword detection
-        self.hotword_service.stop_detection()
         
         logger.info("Shutdown complete")
 
@@ -393,12 +348,10 @@ class TARSAssistant:
         """Get current status of TARS assistant."""
         return {
             "conversation_state": self.conversation_manager.state.value,
-            "hotword_status": self.hotword_service.get_status(),
             "gemini_active": self.gemini_service is not None,
             "elevenlabs_status": self.elevenlabs_service.get_status() if self.elevenlabs_service else None,
             "elevenlabs_available": self.elevenlabs_service.is_available() if self.elevenlabs_service else False,
-            "esp32_status": self.esp32_service.get_status() if self.esp32_service else None,
-            "esp32_connected": self.esp32_service.is_connected() if self.esp32_service else False
+            "client_connected": self.pi_service.is_client_connected() if self.pi_service else False
         }
 
 
