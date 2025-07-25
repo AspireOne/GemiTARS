@@ -1,4 +1,8 @@
 """
+
+DEPRECATED - hotword detection moved to the device itself.
+This is here just for future reference. Ignore this file.
+
 HotwordService: OpenWakeWord-based hotword detection for "Alexa" activation.
 
 This service provides:

@@ -21,7 +21,7 @@ from services.gemini_service import GeminiService
 from services.esp32_interface import ESP32ServiceInterface
 from services.esp32_mock_service import ESP32MockService
 from services.elevenlabs_service import ElevenLabsService
-from services.hotword_service import HotwordService
+from services._hotword_service_deprecated import HotwordService
 from core.conversation_state import ConversationManager, ConversationState
 from config.settings import Config
 from utils.logger import setup_logger
