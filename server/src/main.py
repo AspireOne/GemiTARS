@@ -192,7 +192,9 @@ class TARSAssistant:
                 if self.conversation_manager.state == ConversationState.ACTIVE:
                     # Check for conversation timeout
                     if self.conversation_manager.is_conversation_timeout():
-                        logger.info("Conversation timeout, returning to standby.")
+                        logger.info("Conversation timeout. Notifying client and returning to standby.")
+                        if self.pi_service:
+                            await self.pi_service.send_control_message({"type": "session_end"})
                         await self._enter_passive_mode()
                         
                 await asyncio.sleep(1)  # Check every second

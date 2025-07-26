@@ -84,12 +84,16 @@ class SessionManager:
 
     def on_control_message(self, message: dict):
         """Callback for when a control message is received from the server."""
-        if message.get("type") == "tts_stream_end":
+        msg_type = message.get("type")
+        if msg_type == "tts_stream_end":
             logger.info("TTS stream ended. Waiting for playback to complete.")
             # Schedule the confirmation task to run in the main event loop
             asyncio.run_coroutine_threadsafe(
                 self.confirm_playback_completion(), self.loop
             )
+        elif msg_type == "session_end":
+            logger.warning("Server terminated the session. Ending client-side session.")
+            asyncio.run_coroutine_threadsafe(self.end_session(), self.loop)
 
     async def confirm_playback_completion(self):
         """Waits for audio manager to finish and sends confirmation."""
