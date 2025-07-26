@@ -6,6 +6,24 @@ This document provides a comprehensive implementation guide that redesigns the W
 
 We're completely redesigning the WebSocket client to be purpose-built for persistent connections, eliminating the old on-demand connection model entirely.
 
+**Benefits:**
+- **Eliminated Latency:** No connection setup after hotword detection
+- **Better Reliability:** Automatic reconnection with exponential backoff
+- **Session Resilience:** Can survive temporary network hiccups
+- **Future-Proof:** Enables push notifications and real-time updates
+- ...
+
+**Issues with existing approach:** 
+The current architecture has issues, some of which are e.g.
+- Connection latency (~50-500ms) after hotword detection affects user experience
+- Client state machine tightly couples connection establishment with session management and makes state management complex
+- Server assumes short-lived connections with full resource cleanup on disconnect
+- No resilience against temporary network issues
+- ...
+
+_(future things to consider: push notifications / real time updates should be standardized, parts of the server should be decoupled, and the error handling, state handling and edge cases must be rock solid so that the potential for desynchronization, hangs etc. is minimized)_  
+
+
 ## Phase 1: Complete WebSocketClient Redesign
 
 ### 1.1. New `pi_software/src/services/websocket_client.py`

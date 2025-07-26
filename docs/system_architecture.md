@@ -1,6 +1,8 @@
 # TARS System Architecture
 
-This document outlines the complete architecture of the TARS system, including the server and the Raspberry Pi client. It details the communication protocol, state management, and the interaction between the two components.
+This document outlines the complete (CURRENT!) architecture of the TARS system, including the server and the Raspberry Pi client. It details the communication protocol, state management, and the interaction between the two components.
+
+This document might be outdated.
 
 ## 1. WebSocket Communication Protocol
 
