@@ -107,7 +107,7 @@ class ElevenLabsService:
             return
         
         text = text.strip()
-        logger.info(f"Starting TTS for text: '{text[:50]}{'...' if len(text) > 50 else ''}'")
+        # logger.info(f"Starting TTS for text: '{text[:50]}{'...' if len(text) > 50 else ''}'")
         
         # Update statistics
         self.stats.tts_requests += 1

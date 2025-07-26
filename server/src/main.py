@@ -250,7 +250,7 @@ class TARSAssistant:
         self.conversation_manager.update_activity()
         
         if not current_transcription:
-            print("> You said: ", end="", flush=True)
+            print("\n> You said: ", end="", flush=True)
         
         print(response.transcription_text, end="", flush=True)
         current_transcription += response.transcription_text

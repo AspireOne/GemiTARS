@@ -84,6 +84,8 @@ class GeminiService:
 
         # Default configuration with VAD enabled
         self.config: types.LiveConnectConfig = types.LiveConnectConfig(
+            response_modalities=[types.Modality.TEXT],
+            input_audio_transcription=types.AudioTranscriptionConfig(),
             realtime_input_config=types.RealtimeInputConfig(
                 activity_handling=types.ActivityHandling.NO_INTERRUPTION,
                 automatic_activity_detection=types.AutomaticActivityDetection(

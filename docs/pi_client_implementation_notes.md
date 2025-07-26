@@ -1,20 +1,4 @@
-# Some general raspberry pi client impementtion notes
-
-## Possible structure / functionality
-
-## New Raspberry Pi Client Implementation
-
-This phase involves creating the new software that will run on the Raspberry Pi itself.
-
-### 3.1. Create Project Structure
-
--   **Action:** Create a new directory named `pi_software/`.
--   **Contents:** This directory will contain the Python application for the Pi, including:
-    -   A `main.py` or `client.py` entry point.
-    -   A `requirements.txt` for its dependencies (e.g., `openwakeword`, `websockets`, `sounddevice`).
-    -   Configuration files for the Pi (e.g., server IP address).
-
-### 3.2. Implement Client Functionality
+# Raspberry Pi General Client Implementation
 
 The Python application in `pi_software/` must perform the following tasks:
 
@@ -35,7 +19,7 @@ The Python application in `pi_software/` must perform the following tasks:
     -   If the server closes the connection (e.g., due to a timeout), the client should disconnect, stop streaming, and return to local hotword detection.
     
 
-## Possible structure for shared configs etc. with the server repo
+## Notes: Possible structure for future shared configs etc. with the server repo 
 
 Configuration Strategy Analysis
 Shared Configuration Elements:
@@ -154,30 +138,15 @@ python
 Environment Variables Strategy:
 .env.shared:
 
-### Audio settings that might need runtime adjustment
+## Audio settings that might need runtime adjustment
 HOTWORD_THRESHOLD=0.3
 AUDIO_BLOCK_SIZE=1600
 
-txt
-
-
-.env.server:
-
-GEMINI_API_KEY=your_key_here
-ELEVENLABS_API_KEY=your_key_here
-ELEVENLABS_VOICE_ID=zsUvyVKkEvpw5ZMnMU2I
-
-txt
-
-
-.env.pi:
+.env.pi
 
 SERVER_HOST=192.168.1.100
 AUDIO_INPUT_DEVICE=hw:1,0
 AUDIO_OUTPUT_DEVICE=hw:1,1
-
-txt
-
 
 Benefits of This Approach:
 DRY Principle: Audio and protocol settings are defined once
