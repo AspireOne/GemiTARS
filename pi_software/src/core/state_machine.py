@@ -13,7 +13,6 @@ class ClientState(Enum):
     """Simplified client states for persistent connection model."""
     IDLE = auto()
     LISTENING_FOR_HOTWORD = auto()
-    HOTWORD_DETECTED = auto()
     ACTIVE_SESSION = auto()
 
 class StateMachine:
@@ -25,8 +24,7 @@ class StateMachine:
         self._state = initial_state
         self._transitions: Dict[ClientState, Set[ClientState]] = {
             ClientState.IDLE: {ClientState.LISTENING_FOR_HOTWORD},
-            ClientState.LISTENING_FOR_HOTWORD: {ClientState.HOTWORD_DETECTED, ClientState.IDLE},
-            ClientState.HOTWORD_DETECTED: {ClientState.ACTIVE_SESSION, ClientState.LISTENING_FOR_HOTWORD},
+            ClientState.LISTENING_FOR_HOTWORD: {ClientState.ACTIVE_SESSION, ClientState.IDLE},
             ClientState.ACTIVE_SESSION: {ClientState.LISTENING_FOR_HOTWORD, ClientState.IDLE}
         }
         self.on_state_change: Dict[ClientState, Callable[..., Any]] = {}

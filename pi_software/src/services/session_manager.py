@@ -79,8 +79,8 @@ class SessionManager:
 
     def on_hotword_detected(self):
         """Callback executed when hotword is detected."""
-        if self.state_machine.transition_to(ClientState.HOTWORD_DETECTED):
-            asyncio.run_coroutine_threadsafe(self.start_session(), self.loop)
+        # The start_session method will handle the state transition
+        asyncio.run_coroutine_threadsafe(self.start_session(), self.loop)
 
     async def start_session(self):
         """Start an active conversation session."""
@@ -93,7 +93,9 @@ class SessionManager:
         logger.info("Starting conversation session")
         
         # Transition to active session
-        self.state_machine.transition_to(ClientState.ACTIVE_SESSION)
+        if not self.state_machine.transition_to(ClientState.ACTIVE_SESSION):
+            logger.warning("Could not transition to ACTIVE_SESSION state.")
+            return
         
         # Stop hotword detection, start conversation audio
         await self.audio_manager.stop_recording()
