@@ -240,6 +240,9 @@ class TARSAssistant:
                     full_response = ""
                     is_processing = False
                     
+        except ConnectionClosedOK:
+            # This is an expected closure when the session times out or is otherwise gracefully terminated.
+            logger.info("Gemini response handler closed normally.")
         except asyncio.CancelledError:
             logger.debug("Gemini response handler cancelled")
         except Exception as e:
@@ -260,7 +263,7 @@ class TARSAssistant:
         self.conversation_manager.update_activity()
         
         if not current_transcription:
-            print("\n> You said: ", end="", flush=True)
+            print("\n> You said:", end="", flush=True)
         
         print(response.transcription_text, end="", flush=True)
         current_transcription += response.transcription_text
