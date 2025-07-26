@@ -17,8 +17,8 @@ from google import genai
 from google.genai import types
 from google.genai.live import AsyncSession
 
-from config.settings import Config
-from utils.logger import setup_logger
+from ..config.settings import Config
+from ..utils.logger import setup_logger
 
 logger = setup_logger(os.path.splitext(os.path.basename(__file__))[0])
 

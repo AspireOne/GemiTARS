@@ -8,8 +8,8 @@ from typing import Optional, Any
 import websockets
 from websockets.exceptions import ConnectionClosed
 
-from services.pi_interface import PiInterfaceService, HotwordCallback, AudioCallback, DisconnectCallback
-from utils.logger import setup_logger
+from .pi_interface import PiInterfaceService, HotwordCallback, AudioCallback, DisconnectCallback
+from ..utils.logger import setup_logger
 
 logger = setup_logger(__name__)
 

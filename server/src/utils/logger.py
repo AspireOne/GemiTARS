@@ -1,7 +1,7 @@
 import logging
 import colorlog
 
-from config.settings import Config
+from ..config.settings import Config
 
 def setup_logger(name: str) -> logging.Logger:
     """

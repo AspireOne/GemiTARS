@@ -17,8 +17,8 @@ from elevenlabs.client import AsyncElevenLabs
 from elevenlabs import VoiceSettings
 from dataclasses import dataclass, field, asdict
 
-from config.settings import Config
-from utils.logger import setup_logger
+from ..config.settings import Config
+from ..utils.logger import setup_logger
 
 logger = setup_logger(os.path.splitext(os.path.basename(__file__))[0])
 

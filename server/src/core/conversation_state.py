@@ -5,8 +5,8 @@ import os
 from enum import Enum
 from datetime import datetime, timedelta
 
-from config.settings import Config
-from utils.logger import setup_logger
+from ..config.settings import Config
+from ..utils.logger import setup_logger
 
 logger = setup_logger(os.path.splitext(os.path.basename(__file__))[0])
 

@@ -17,13 +17,13 @@ from websockets.exceptions import ConnectionClosedOK
 
 from dotenv import load_dotenv
 
-from services.gemini_service import GeminiService
-from services.pi_interface import PiInterfaceService
-from services.pi_websocket_service import PiWebsocketService
-from services.elevenlabs_service import ElevenLabsService
-from core.conversation_state import ConversationManager, ConversationState
-from config.settings import Config
-from utils.logger import setup_logger
+from .services.gemini_service import GeminiService
+from .services.pi_interface import PiInterfaceService
+from .services.pi_websocket_service import PiWebsocketService
+from .services.elevenlabs_service import ElevenLabsService
+from .core.conversation_state import ConversationManager, ConversationState
+from .config.settings import Config
+from .utils.logger import setup_logger
 
 
 load_dotenv()
