@@ -26,7 +26,7 @@ class Config:
 
     # Omit "alexa" for now - needs to somehow be downloaded to the openwakeword cache.
     HOTWORD_MODELS = [hey_tars_path, tars_path]
-    HOTWORD_THRESHOLD = 0.2 # OpenWakeWord's default is 0.5. Will need to be adjusted with the specific esp32 mic.
+    HOTWORD_THRESHOLD = 0.1 # OpenWakeWord's default is 0.5. Will need to be adjusted with the specific esp32 mic.
     HOTWORD_BUFFER_SECONDS = 1.4 # How long does it take to say? + buffer
     HOTWORD_REDETECTION_TIMEOUT_SECONDS = 2
     HOTWORD_DEBUG_LOGGING = True  # Enable detailed confidence logging for debugging

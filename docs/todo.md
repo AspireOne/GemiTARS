@@ -1,5 +1,7 @@
 # A pinned TODO list of tasks for the whole project - both server and client (raspberry pi software).
 
+- Refactor the session / state management to be less complex and more performant. E.g. the server-side 
+- The PI Client should ALWAYS have a websocket connection open to the server so that after detection a hotword, we can IMMEDIATELY with no delay start streaming audio to the server.
 - Make connection closing more reliable - EXTREMELY RELIABLE. My server just threw an error during listening, went to passive mode, but the PI client was kept in active session state becaus apparantely the connection wasn't closed or something.
 - [ ] Unite /server and /pi_software startup methods (one is module and other is directly by script...)
 - [ ] Display: A display for the TARS robot.

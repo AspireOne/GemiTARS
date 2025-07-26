@@ -79,7 +79,8 @@ class TARSAssistant:
                 logger.info("Starting Pi Interface Service...")
                 await self.pi_service.initialize(
                     hotword_callback=self._enter_active_mode,
-                    audio_callback=self._on_audio_chunk_received
+                    audio_callback=self._on_audio_chunk_received,
+                    disconnect_callback=self._on_client_disconnected
                 )
             else:
                 logger.critical("Pi Interface Service not initialized. Exiting.")
@@ -118,6 +119,13 @@ class TARSAssistant:
                 self.gemini_service.queue_audio(audio_bytes)
         # In all other states, audio is ignored.
             
+    async def _on_client_disconnected(self) -> None:
+        """Callback for when the client disconnects."""
+        logger.warning("Client disconnected. Checking if a session cleanup is needed.")
+        if self.conversation_manager.state != ConversationState.PASSIVE:
+            logger.info("Client disconnected during an active session. Forcing return to passive mode.")
+            await self._enter_passive_mode()
+
     async def _enter_passive_mode(self) -> None:
         """End a conversation and return to a passive state."""
         logger.info("Conversation ended. Returning to passive state.")
@@ -287,7 +295,10 @@ class TARSAssistant:
                 await self.pi_service.play_audio_chunk(audio_chunk)
                 chunk_count += 1
             
-            # Wait for the audio queue to be fully processed
+            # Signal to the client that the audio stream is finished
+            await self.pi_service.send_control_message({"type": "tts_stream_end"})
+
+            # Wait for the client to confirm that playback is complete
             await self.pi_service.wait_for_playback_completion()
             
             logger.info(f"Voice output completed ({chunk_count} chunks)")

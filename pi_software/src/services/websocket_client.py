@@ -23,6 +23,7 @@ class WebSocketClient:
         self.is_connected = False
         self.on_audio_received: Optional[Callable[[bytes], None]] = None
         self.on_connection_lost: Optional[Callable[[], None]] = None
+        self.on_control_message_received: Optional[Callable[[dict], None]] = None
         self._receive_task: Optional[asyncio.Task] = None
 
     async def connect(self) -> bool:
@@ -58,7 +59,12 @@ class WebSocketClient:
                 if isinstance(message, bytes):
                     if self.on_audio_received:
                         self.on_audio_received(message)
-                # Add handling for JSON control messages from server if needed later
+                elif isinstance(message, str):
+                   if self.on_control_message_received:
+                       try:
+                           self.on_control_message_received(json.loads(message))
+                       except json.JSONDecodeError:
+                           logger.warning(f"Received invalid JSON from server: {message}")
         except websockets.exceptions.ConnectionClosed:
             logger.warning("Connection to server was closed.")
             self.is_connected = False

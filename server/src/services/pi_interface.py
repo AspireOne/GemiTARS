@@ -6,11 +6,12 @@ must follow. It handles the bidirectional flow of audio and control messages.
 """
 
 from abc import ABC, abstractmethod
-from typing import Callable, Awaitable
+from typing import Callable, Awaitable, Optional
 
 # Define callback types for clarity
 HotwordCallback = Callable[[], Awaitable[None]]
 AudioCallback = Callable[[bytes], None]
+DisconnectCallback = Callable[[], Awaitable[None]]
 
 class PiInterfaceService(ABC):
     """
@@ -22,7 +23,8 @@ class PiInterfaceService(ABC):
     async def initialize(
         self, 
         hotword_callback: HotwordCallback,
-        audio_callback: AudioCallback
+        audio_callback: AudioCallback,
+        disconnect_callback: Optional[DisconnectCallback] = None
     ) -> None:
         """
         Initialize the service, starting any necessary servers (e.g., WebSockets)
@@ -31,6 +33,7 @@ class PiInterfaceService(ABC):
         Args:
             hotword_callback: An awaitable function to call when the hotword is detected.
             audio_callback: A function to call to process incoming audio chunks.
+            disconnect_callback: An awaitable function to call when the client disconnects.
         """
         pass
 
@@ -54,6 +57,16 @@ class PiInterfaceService(ABC):
         """
         Wait until all queued audio chunks have been sent to the client and 
         are likely played.
+        """
+        pass
+
+    @abstractmethod
+    async def send_control_message(self, message: dict) -> None:
+        """
+        Send a JSON control message to the client.
+
+        Args:
+            message: The JSON-serializable dictionary to send.
         """
         pass
 

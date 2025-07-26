@@ -8,7 +8,7 @@ from typing import Optional, Any
 import websockets
 from websockets.exceptions import ConnectionClosed
 
-from services.pi_interface import PiInterfaceService, HotwordCallback, AudioCallback
+from services.pi_interface import PiInterfaceService, HotwordCallback, AudioCallback, DisconnectCallback
 from utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -30,14 +30,17 @@ class PiWebsocketService(PiInterfaceService):
         # Callbacks to the main assistant
         self.hotword_callback: Optional[HotwordCallback] = None
         self.audio_callback: Optional[AudioCallback] = None
+        self.disconnect_callback: Optional[DisconnectCallback] = None
 
     async def initialize(
         self, 
         hotword_callback: HotwordCallback,
-        audio_callback: AudioCallback
+        audio_callback: AudioCallback,
+        disconnect_callback: Optional[DisconnectCallback] = None
     ) -> None:
         self.hotword_callback = hotword_callback
         self.audio_callback = audio_callback
+        self.disconnect_callback = disconnect_callback
         
         logger.info(f"Starting WebSocket server on {self.host}:{self.port}")
         try:
@@ -73,6 +76,11 @@ class PiWebsocketService(PiInterfaceService):
             # Ensure queue is cleared for the next connection
             while not self.playback_queue.empty():
                 self.playback_queue.get_nowait()
+            
+            # Notify the main assistant that the client has disconnected
+            if self.disconnect_callback:
+                asyncio.create_task(self.disconnect_callback()) # type: ignore
+
             logger.info("Client disconnected and resources cleaned up.")
 
     async def _message_handler(self):
@@ -86,6 +94,9 @@ class PiWebsocketService(PiInterfaceService):
                     command = json.loads(message)
                     if command.get("type") == "hotword_detected" and self.hotword_callback:
                         asyncio.create_task(self.hotword_callback()) # type: ignore
+                    elif command.get("type") == "playback_complete":
+                        logger.debug("Received playback complete signal from client.")
+                        self.playback_complete_event.set()
                 except json.JSONDecodeError:
                     logger.warning(f"Received invalid JSON from client: {message}")
 
@@ -94,15 +105,17 @@ class PiWebsocketService(PiInterfaceService):
 
     async def _audio_playback_handler(self):
         """Continuously send queued audio chunks to the client."""
-        while True:
+        while self.client:
             try:
                 audio_chunk = await self.playback_queue.get()
-                if self.client and self.client.open:
-                    await self.client.send(audio_chunk)
+                await self.client.send(audio_chunk)
                 self.playback_queue.task_done()
                 # If the queue is now empty, set the event
                 if self.playback_queue.empty():
                     self.playback_complete_event.set()
+            except ConnectionClosed:
+                logger.warning("Playback handler failed: Connection closed.")
+                break
             except asyncio.CancelledError:
                 break
 
@@ -126,9 +139,16 @@ class PiWebsocketService(PiInterfaceService):
 
     async def wait_for_playback_completion(self) -> None:
         if self.client:
-            await self.playback_queue.join()
-            # Wait for the event that is set when the queue becomes empty
+            logger.debug("Waiting for playback completion signal...")
             await self.playback_complete_event.wait()
+            logger.debug("Playback completion signal received.")
 
     def is_client_connected(self) -> bool:
-        return self.client is not None and self.client.open
+        return self.client is not None
+
+    async def send_control_message(self, message: dict) -> None:
+        if self.client:
+            try:
+                await self.client.send(json.dumps(message))
+            except ConnectionClosed:
+                logger.warning("Failed to send control message: connection closed.")
