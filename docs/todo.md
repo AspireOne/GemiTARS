@@ -1,5 +1,7 @@
 # A pinned TODO list of tasks for the whole project - both server and client (raspberry pi software).
 
+- ElevenLabs: retrain the voice using some samples from the voice model itself. Sometimes, some generations are randomly high-pitched.
+- The "playback completed" signal might be redundant. IF the playback is completed right after the last audio byte is sent from the server to the PI client, we can just do it right after that (with a small delay). The PI client necessarily plays it out loud in real-time. (ALTHOUGH IT SEEMS LIKE THAT IS NOT THE CASE - WILL HAVE TO INVESTIGATE)
 - Refactor the session / state management to be less complex and more performant. E.g. the server-side passive/listening/processing/active might
   be redundant, and there's too much surface for errors because the PI client keeps it's own state too so it can get desynchronized. The goal should be
   to streamline it as much as possible.

@@ -251,6 +251,7 @@ class TARSAssistant:
     def _handle_gemini_text_chunk(self, text: str, full_response: str, is_processing: bool) -> tuple[str, bool]:
         """Handle a chunk of text from Gemini's response."""
         if not is_processing:
+            print()  # Newline to separate user speech from assistant response
             self.conversation_manager.transition_to(ConversationState.PROCESSING)
             is_processing = True
         
@@ -263,7 +264,7 @@ class TARSAssistant:
         self.conversation_manager.update_activity()
         
         if not current_transcription:
-            print("\n> You said:", end="", flush=True)
+            print("> You said:", end="", flush=True)
         
         print(response.transcription_text, end="", flush=True)
         current_transcription += response.transcription_text
