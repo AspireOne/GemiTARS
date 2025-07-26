@@ -208,7 +208,8 @@ class PersistentWebSocketClient:
     async def _cleanup_connection(self):
         """Clean up connection and tasks."""
         old_status = self.status
-        self.status = ConnectionStatus.DISCONNECTED
+        if self.status != ConnectionStatus.SHUTTING_DOWN:
+            self.status = ConnectionStatus.DISCONNECTED
         
         # Cancel tasks
         for task in [self._receive_task, self._heartbeat_task]:
