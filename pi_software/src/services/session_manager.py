@@ -188,7 +188,12 @@ class SessionManager:
         """Handle control messages from server."""
         msg_type = message.get("type")
         
-        if msg_type == "tts_stream_end":
+        if msg_type == "start_of_tts_stream":
+            logger.info("TTS stream starting - stopping microphone")
+            asyncio.run_coroutine_threadsafe(
+                self.on_tts_stream_start(), self.loop
+            )
+        elif msg_type == "tts_stream_end":
             logger.info("TTS stream ended")
             asyncio.run_coroutine_threadsafe(
                 self.confirm_playback_completion(), self.loop
@@ -197,10 +202,34 @@ class SessionManager:
             logger.info("Server ended the session")
             asyncio.run_coroutine_threadsafe(self.end_session(), self.loop)
 
+    async def on_tts_stream_start(self):
+        """Handle start of TTS stream from server."""
+        # Transition to PROCESSING_RESPONSE state
+        if self.state_machine.transition_to(ClientState.PROCESSING_RESPONSE):
+            # Stop microphone to prevent audio bleeding
+            success = await self._ensure_audio_state("stopped")
+            if not success:
+                logger.error("Failed to stop microphone during TTS stream start")
+        else:
+            logger.error("Failed to transition to PROCESSING_RESPONSE state")
+
     async def confirm_playback_completion(self):
-        """Confirm TTS playback is complete."""
+        """Confirm TTS playback is complete and re-enable microphone for next user input."""
         await self.audio_manager.wait_for_playback_completion()
         logger.info("Playback complete")
+        
+        # Only transition back to ACTIVE_SESSION if we're currently in PROCESSING_RESPONSE
+        if self.state_machine.state == ClientState.PROCESSING_RESPONSE:
+            if self.state_machine.transition_to(ClientState.ACTIVE_SESSION):
+                # Re-enable microphone for next user input
+                success = await self._ensure_audio_state("session")
+                if not success:
+                    logger.error("Failed to restart microphone after TTS playback")
+                    # Fall back to recovery
+                    await self._recover_to_listening_state()
+            else:
+                logger.error("Failed to transition back to ACTIVE_SESSION after TTS playback")
+        
         await self.websocket_client.send_message({"type": "playback_complete"})
 
     async def _ensure_audio_state(self, desired_state: str):

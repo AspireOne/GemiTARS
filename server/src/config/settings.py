@@ -40,7 +40,7 @@ Begin now. Respond only as TARS. This is not a simulation. This is an order.
 
     # VAD Settings
     VAD_PREFIX_PADDING_MS = 40
-    VAD_SILENCE_DURATION_MS = 900
+    VAD_SILENCE_DURATION_MS = 800
 
     # Conversation Settings
     CONVERSATION_TIMEOUT_SECONDS = 30

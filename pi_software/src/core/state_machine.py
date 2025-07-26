@@ -14,6 +14,7 @@ class ClientState(Enum):
     IDLE = auto()
     LISTENING_FOR_HOTWORD = auto()
     ACTIVE_SESSION = auto()
+    PROCESSING_RESPONSE = auto()
 
 class StateMachine:
     """
@@ -25,7 +26,8 @@ class StateMachine:
         self._transitions: Dict[ClientState, Set[ClientState]] = {
             ClientState.IDLE: {ClientState.LISTENING_FOR_HOTWORD},
             ClientState.LISTENING_FOR_HOTWORD: {ClientState.ACTIVE_SESSION, ClientState.IDLE},
-            ClientState.ACTIVE_SESSION: {ClientState.LISTENING_FOR_HOTWORD, ClientState.IDLE}
+            ClientState.ACTIVE_SESSION: {ClientState.PROCESSING_RESPONSE, ClientState.LISTENING_FOR_HOTWORD, ClientState.IDLE},
+            ClientState.PROCESSING_RESPONSE: {ClientState.ACTIVE_SESSION, ClientState.LISTENING_FOR_HOTWORD, ClientState.IDLE}
         }
         self.on_state_change: Dict[ClientState, Callable[..., Any]] = {}
 
