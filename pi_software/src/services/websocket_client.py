@@ -76,6 +76,8 @@ class WebSocketClient:
         except websockets.exceptions.ConnectionClosed:
             logger.error("Failed to send message: connection closed.")
             self.is_connected = False
+            if self.on_connection_lost:
+                self.on_connection_lost()
 
     async def send_audio(self, audio_data: bytes):
         """Sends a binary audio chunk to the server."""
@@ -88,6 +90,8 @@ class WebSocketClient:
         except websockets.exceptions.ConnectionClosed:
             logger.error("Failed to send audio: connection closed.")
             self.is_connected = False
+            if self.on_connection_lost:
+                self.on_connection_lost()
 
     async def disconnect(self):
         """Closes the WebSocket connection."""

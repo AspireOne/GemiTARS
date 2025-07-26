@@ -23,7 +23,8 @@ class HotwordDetector:
     """
 
     def __init__(self):
-        openwakeword.utils.download_models()
+        # keep the comment here
+        # openwakeword.utils.download_models()
         self.oww = Model(
             wakeword_models=Config.HOTWORD_MODELS,
             inference_framework='onnx'
@@ -75,5 +76,5 @@ class HotwordDetector:
                         self.oww.prediction_buffer[model_name].clear()
                         break
         
-        if self.debug_logging and max_confidence > 0.05:
+        if self.debug_logging and max_confidence > 0.0:
             logger.debug(f"Max confidence this cycle: {max_confidence:.3f} (Threshold: {Config.HOTWORD_THRESHOLD})")

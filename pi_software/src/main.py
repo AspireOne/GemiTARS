@@ -24,7 +24,8 @@ class TarsClient:
     Main client application class.
     """
 
-    def __init__(self):
+    def __init__(self, loop: asyncio.AbstractEventLoop):
+        self.loop = loop
         # For now, we hardcode the PC audio manager.
         # A factory function would be used here in the future.
         self.audio_manager = PcAudioManager()
@@ -35,7 +36,8 @@ class TarsClient:
             state_machine=self.state_machine,
             audio_manager=self.audio_manager,
             hotword_detector=self.hotword_detector,
-            websocket_client=self.websocket_client
+            websocket_client=self.websocket_client,
+            loop=self.loop
         )
         self.shutdown_event = asyncio.Event()
 
@@ -62,11 +64,11 @@ class TarsClient:
 
 async def main():
     """Main entry point for the client application."""
-    client = TarsClient()
+    loop = asyncio.get_running_loop()
+    client = TarsClient(loop=loop)
 
     # Signal handling for graceful shutdown
     if platform.system() != "Windows":
-        loop = asyncio.get_running_loop()
         for sig in (signal.SIGINT, signal.SIGTERM):
             loop.add_signal_handler(sig, client.shutdown_event.set)
     else:

@@ -23,12 +23,14 @@ class SessionManager:
         state_machine: StateMachine,
         audio_manager: AudioInterface,
         hotword_detector: HotwordDetector,
-        websocket_client: WebSocketClient
+        websocket_client: WebSocketClient,
+        loop: asyncio.AbstractEventLoop
     ):
         self.state_machine = state_machine
         self.audio_manager = audio_manager
         self.hotword_detector = hotword_detector
         self.websocket_client = websocket_client
+        self.loop = loop
         
         self._setup_callbacks()
 
@@ -47,7 +49,7 @@ class SessionManager:
     def on_hotword_detected(self):
         """Callback executed when the hotword is detected."""
         if self.state_machine.transition_to(ClientState.HOTWORD_DETECTED):
-            asyncio.create_task(self.handle_active_session())
+            asyncio.run_coroutine_threadsafe(self.handle_active_session(), self.loop)
 
     async def handle_active_session(self):
         """Manages the flow of an active conversation session."""
@@ -64,7 +66,9 @@ class SessionManager:
             
             # Start streaming microphone audio to the server
             await self.audio_manager.start_recording(
-                lambda audio_chunk: asyncio.create_task(self.websocket_client.send_audio(audio_chunk))
+                lambda audio_chunk: asyncio.run_coroutine_threadsafe(
+                    self.websocket_client.send_audio(audio_chunk), self.loop
+                )
             )
         else:
             logger.error("Failed to connect to server. Returning to listening.")
@@ -72,12 +76,18 @@ class SessionManager:
 
     def on_audio_received(self, audio_chunk: bytes):
         """Callback for when TTS audio is received from the server."""
-        asyncio.create_task(self.audio_manager.play_audio_chunk(audio_chunk))
+        asyncio.run_coroutine_threadsafe(
+            self.audio_manager.play_audio_chunk(audio_chunk),
+            self.loop
+        )
 
     def on_connection_lost(self):
         """Callback for when the WebSocket connection is lost."""
-        logger.warning("Connection lost. Ending session.")
-        asyncio.create_task(self.end_session())
+        # Make this idempotent by checking the state.
+        # If we are not in an active session, we don't need to do anything.
+        if self.state_machine.state == ClientState.ACTIVE_SESSION:
+            logger.warning("Connection lost. Ending session.")
+            asyncio.run_coroutine_threadsafe(self.end_session(), self.loop)
 
     async def end_session(self):
         """Cleans up an active session and returns to listening."""

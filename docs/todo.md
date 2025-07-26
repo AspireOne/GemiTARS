@@ -1,5 +1,6 @@
 # A pinned TODO list of tasks for the GemiTARS project - both server and client (raspberry pi software).
 
+- [ ] Unite /server and /pi_software startup methods (one is module and other is directly by script...)
 - [ ] Display: A display for the TARS robot.
 - [ ] Improve Noise Cancellation: Implement software-based noise reduction on the audio stream received from the ESP32.
 - [ ] Dynamic Configuration of system settings: Allow system settings (e.g., conversation timeout) to be changed via voice commands.
