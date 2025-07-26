@@ -1,61 +1,41 @@
-# Server Refactoring Plan: Single-Client Architecture
+# Some general raspberry pi client impementtion notes
 
-This document outlines the step-by-step plan for refactoring the GemiTARS server to support the new Raspberry Pi client. The architecture will be designed to handle a single client connection at a time.
+## Possible structure / functionality
 
----
+## New Raspberry Pi Client Implementation
 
-## **Step 1: Create `PiInterfaceService` Skeleton**
+This phase involves creating the new software that will run on the Raspberry Pi itself.
 
-*   **Goal:** Create the new service's abstract interface, defining the contract for how `TARSAssistant` will communicate with the Raspberry Pi.
-*   **Action:** Create a new file, `src/services/pi_interface.py`. This file will contain an abstract base class `PiInterfaceService` that defines all the necessary methods for communication (e.g., `initialize`, `play_audio_chunk`, `shutdown`, `set_callbacks`). This provides a clean blueprint for the concrete implementation and makes refactoring `TARSAssistant` straightforward.
+### 3.1. Create Project Structure
 
----
+-   **Action:** Create a new directory named `pi_software/`.
+-   **Contents:** This directory will contain the Python application for the Pi, including:
+    -   A `main.py` or `client.py` entry point.
+    -   A `requirements.txt` for its dependencies (e.g., `openwakeword`, `websockets`, `sounddevice`).
+    -   Configuration files for the Pi (e.g., server IP address).
 
-## **Step 2: Refactor `TARSAssistant` for New Interface**
+### 3.2. Implement Client Functionality
 
-*   **Goal:** Decouple `TARSAssistant` from the obsolete ESP32 and hotword services and connect it to the new `PiInterfaceService`.
-*   **Actions in `src/main.py`:**
-    1.  **Replace Imports**: Remove imports for `ESP32ServiceInterface`, `ESP32MockService`, and `HotwordService`. Add an import for the new `PiInterfaceService`.
-    2.  **Update `__init__`**: Replace `self.esp32_service` and `self.hotword_service` with a single `self.pi_service`.
-    3.  **Delete Obsolete Methods**: Remove `_initialize_esp32_service()`, `_route_audio_based_on_state()`, and `_on_hotword_detected()`.
-    4.  **Adapt Core Logic**:
-        *   The `run()` method will now initialize and start the `pi_service`.
-        *   `_enter_active_mode()` will be triggered by a callback from the `pi_service` when the client signals a hotword was detected.
-        *   `_stream_tts_response()` will use `self.pi_service.play_audio_chunk()` to send audio to the Pi.
+The Python application in `pi_software/` must perform the following tasks:
 
----
-
-## **Step 3: Implement `PiInterfaceService` WebSocket Logic**
-
-*   **Goal:** Build the concrete implementation of the `PiInterfaceService` that handles the actual WebSocket communication.
-*   **Actions:**
-    1.  **Create `PiWebsocketService`**: Create a new class, likely in a new file like `src/services/pi_websocket_service.py`, that implements the `PiInterfaceService` abstract class.
-    2.  **Implement WebSocket Server**: This class will start and manage a WebSocket server. It will be designed to handle only one client connection at a time.
-    3.  **Implement Message Handling**: The server will listen for messages and distinguish between:
-        *   **JSON commands** (e.g., `{"type": "hotword_detected"}`) which will trigger callbacks into `TARSAssistant`.
-        *   **Binary audio data**, which will be passed back to `TARSAssistant` to be forwarded to the `GeminiService`.
-    4.  **Implement Audio Playback**: The `play_audio_chunk` method will send binary TTS audio from the server to the connected client.
-
----
-
-## **Step 4: Final Integration and Cleanup**
-
-*   **Goal:** Ensure the new system works correctly and remove all obsolete files.
-*   **Actions:**
-    1.  **Integration Test**: Verify the complete, end-to-end communication flow.
-    2.  **Delete Obsolete Files**: Permanently delete `src/services/esp32_interface.py`, `src/services/esp32_mock_service.py`, and `src/services/_hotword_service_deprecated.py`.
+1.  **Audio Setup:**
+    -   Use a library like `sounddevice` or `PyAudio` to interface with the I2S microphone and speaker via ALSA, as configured in the OS.
+2.  **Local Hotword Detection:**
+    -   Continuously read from the microphone.
+    -   Feed the audio into an instance of `openwakeword`.
+    -   When the wake word ("Hey, TARS!") is detected, proceed to the next step.
+3.  **Server Connection:**
+    -   On hotword detection, establish a WebSocket connection to the main server.
+    -   Play a local acknowledgment sound ("mhm," "listening...").
+4.  **Audio Streaming:**
+    -   Stream live microphone audio to the server over the WebSocket connection.
+    -   Simultaneously, listen for incoming audio from the server (the TTS response).
+    -   Play the received TTS audio through the speaker.
+5.  **Session Management:**
+    -   If the server closes the connection (e.g., due to a timeout), the client should disconnect, stop streaming, and return to local hotword detection.
     
-    
-    
-    
-    
-    
-    
-    
-    
----
 
-## Other unrelated info (TODO)
+## Possible structure for shared configs etc. with the server repo
 
 Configuration Strategy Analysis
 Shared Configuration Elements:
@@ -174,7 +154,7 @@ python
 Environment Variables Strategy:
 .env.shared:
 
-# Audio settings that might need runtime adjustment
+### Audio settings that might need runtime adjustment
 HOTWORD_THRESHOLD=0.3
 AUDIO_BLOCK_SIZE=1600
 

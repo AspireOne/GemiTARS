@@ -1,13 +1,9 @@
 import logging
-import os
 
 """
 Simple centralized configuration for GemiTARS.
 All magic values are defined here for easy maintenance.
 """
-
-hey_tars_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'resources', 'Hey_Tars.onnx'))
-tars_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'resources', 'Tars.onnx'))
 
 class Config:
     # Logging
@@ -48,16 +44,6 @@ Begin now. Respond only as TARS. This is not a simulation. This is an order.
 
     # Conversation Settings
     CONVERSATION_TIMEOUT_SECONDS = 30
-    
-    # Hotword Detection Settings
-    HOTWORD_MODELS = ["alexa", hey_tars_path, tars_path]
-    HOTWORD_THRESHOLD = 0.3 # OpenWakeWord's default is 0.5. Will need to be adjusted with the specific esp32 mic.
-    HOTWORD_BUFFER_SECONDS = 1.5 # How long does it take to say? + buffer
-    HOTWORD_REDETECTION_TIMEOUT_SECONDS = 2
-    HOTWORD_DEBUG_LOGGING = False  # Enable detailed confidence logging for debugging
-    
-    # ESP32 Service Settings
-    ESP32_SERVICE_TYPE = "mock"  # "mock" or "real"
     
     # ElevenLabs TTS Settings
     ELEVENLABS_VOICE_ID = "zsUvyVKkEvpw5ZMnMU2I" #"dXtC3XhB9GtPusIpNtQx"

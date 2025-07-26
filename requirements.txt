@@ -3,7 +3,8 @@ python-dotenv
 sounddevice
 numpy
 requests
-openwakeword
 elevenlabs
 elevenlabs[pyaudio]
 colorlog
+openwakeword
+websockets

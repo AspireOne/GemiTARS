@@ -4,9 +4,12 @@ A replica of TARS from interstellar, featuring continuous conversations powered 
 
 This file provides overview and high level goals/features and architecture of the project.
 
+`/server`: contains the server code.
+`/pi_software`: contains the code for the Raspberry Pi client.
+
 - To see the current state of the project: [`docs/todo.md`](docs/todo.md).
 - External documentation is in [`docs/external/`](docs/external_docs/) (for gemini Live API, ElevenLabs TTS, OpenWakeWord etc.).
-- The Raspberry Pi software is in [`pi_software/`](pi_software/). <!-- !! Updated from ESP32; adjust directory name as needed !! -->
+- The Raspberry Pi software is in [`pi_software/`](pi_software/).
 - [`/tars_voice_clips`](/tars_voice_clips) contains most of tars' voice from the original movie with the voice isolated. Can  
   be used to train a model for voice cloning.
 

@@ -84,32 +84,18 @@ class GeminiService:
 
         # Default configuration with VAD enabled
         self.config: types.LiveConnectConfig = types.LiveConnectConfig(
-            response_modalities=[types.Modality.TEXT],
-            system_instruction=[f"{self.system_prompt}"], 
-            temperature=0.9,
-            context_window_compression=types.ContextWindowCompressionConfig(
-                sliding_window=types.SlidingWindow()
-            ),
-            input_audio_transcription=types.AudioTranscriptionConfig(),
             realtime_input_config=types.RealtimeInputConfig(
-                # We do not support interruptions for now. When we do, remove this line!
                 activity_handling=types.ActivityHandling.NO_INTERRUPTION,
-                # Not sure if useful for anything...
-                # turn_coverage=types.TurnCoverage.TURN_INCLUDES_ALL_INPUT,
                 automatic_activity_detection=types.AutomaticActivityDetection(
                     disabled=False,
                     prefix_padding_ms=Config.VAD_PREFIX_PADDING_MS,
                     silence_duration_ms=Config.VAD_SILENCE_DURATION_MS,
                     start_of_speech_sensitivity=types.StartSensitivity.START_SENSITIVITY_HIGH,
-                    # end_of_speech_sensitivity=
                 )
-            )
-            # Not supported with this model, but if we ever switch, turn this on (especially the frequency penalty)
-            # generation_config=types.GenerationConfig(
-            #     frequency_penalty=0.3,
-            #     enable_affective_dialog=True,
-            #     temperature=0.9,  
-            # ),
+            ),
+            generation_config=types.GenerationConfig(
+                temperature=0.9,
+            ),
         )
 
         # Extension points for future features
@@ -224,9 +210,15 @@ class GeminiService:
     async def __aenter__(self):
         """Async context manager entry."""
         # Store the context manager from the client
+        final_config = self.config
+        if self.system_prompt:
+            # Use model_copy to create a new config object with the system prompt.
+            update_dict = {'system_instruction': self.system_prompt}
+            final_config = self.config.model_copy(update=update_dict)
+
         self._connection_manager = self.client.aio.live.connect(
             model=self.model,
-            config=self.config
+            config=final_config,
         )
         self.session = await self._connection_manager.__aenter__()
         return self

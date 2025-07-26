@@ -17,7 +17,8 @@ class PiWebsocketService(PiInterfaceService):
     """
     Manages WebSocket communication with a single Raspberry Pi client.
     """
-
+    
+    # TODO: Move the port to a config/settings file!!
     def __init__(self, host: str = "0.0.0.0", port: int = 7456):
         self.host = host
         self.port = port
