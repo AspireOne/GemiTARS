@@ -4,32 +4,32 @@
 
 ---
 
-## 🛠️ Required / Core Tasks
+## 🛠️ Core Tasks
 
-- [ ] 🔊 Play local acknowledgment sound (e.g., “mhm”, “listening...”).
-- [ ] 🎙 Implement actual I2S mic/speaker code on the Pi client.
-- [ ] ✅ Test mic/speaker reliability, audio clarity, and latency.
-- [ ] 🤖 ElevenLabs retraining
+- [ ] 🔴 Play local acknowledgment sound (e.g., “mhm”, “listening...”).
+- [ ] 🔴 Implement actual I2S mic/speaker code on the Pi client.
+- [ ] 🟠 Test mic/speaker reliability, audio clarity, and latency.
+- [ ] 🟠 ElevenLabs retraining
   - Use voice samples from the current model to reduce pitch inconsistency.
-- [ ] 🧠 Refactor session & state management
+- [ ] 🟠 Refactor session & state management
   - Reduce complexity and avoid server/client state desync.
   - Possibly merge passive/listening/processing/active phases.
-- [ ] 🔌 Maintain persistent WebSocket connection from Pi to server.
+- [ ] 🔴 Maintain persistent WebSocket connection from Pi to server.
   - Required for immediate audio streaming after hotword detection.
-- [ ] 🔒 Improve connection stability & reconnection logic.
-- [ ] 🧼 Noise cancellation
+- [ ] 🔴 Improve connection stability & reconnection logic.
+- [ ] 🟡 Noise cancellation
   - Implement software noise reduction (e.g., ONNX/OpenWakeWord).
   - Calibrate for INMP441 mic specifically.
-- [ ] 🧩 Handle interruptions and echo/feedback cancellation.
-- [ ] 🗣 Dynamic configuration of system settings (e.g., timeout) via voice.
-- [ ] ❤️ Dynamic user preferences
+- [ ] 🟡 Handle interruptions and echo/feedback cancellation.
+- [ ] 🟡 Dynamic configuration of system settings (e.g., timeout) via voice.
+- [ ] 🟢 Dynamic user preferences
   - Humor/personality settings, memory of prior choices.
-- [ ] 🧠 Long-term memory system
+- [ ] 🟢 Long-term memory system
   - Vector DB and/or chat memory (e.g., 1-hour rolling context).
-- [ ] 🧪 Custom wake word verifier model
+- [ ] 🟢 Custom wake word verifier model
   - See: [openWakeWord user-specific models](https://github.com/dscripka/openWakeWord#user-specific-models)
-- [ ] 🧰 Consolidate `/server` and `/pi_software` startup methods.
-- [ ] 📺 Implement TARS robot display output.
+- [ ] 🟢 Consolidate `/server` and `/pi_software` startup methods.
+- [ ] 🟢 Implement TARS robot display output.
 
 ---
 

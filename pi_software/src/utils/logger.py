@@ -5,24 +5,30 @@ from ..config.settings import Config
 
 def setup_logger(name: str) -> logging.Logger:
     """
-    Sets up a colorized logger.
+    Set up a logger with colored output.
     """
     logger = logging.getLogger(name)
-    
-    if not logger.handlers:
-        logger.setLevel(Config.LOG_LEVEL)
+    logger.setLevel(Config.LOG_LEVEL)
+    logger.propagate = False  # Prevent duplicate logs in parent loggers
+
+    if not logger.hasHandlers():
         handler = colorlog.StreamHandler()
+        
         formatter = colorlog.ColoredFormatter(
-            '%(log_color)s%(levelname)-8s%(reset)s %(blue)s%(name)s%(reset)s - %(message)s',
+            fmt='%(log_color)s%(asctime)s [%(levelname)s] %(purple)s[%(name)s]%(reset)s %(message)s',
+            datefmt='%H:%M:%S',
+            reset=True,
             log_colors={
                 'DEBUG':    'cyan',
                 'INFO':     'green',
                 'WARNING':  'yellow',
                 'ERROR':    'red',
                 'CRITICAL': 'red,bg_white',
-            }
+            },
+            style='%'
         )
+        
         handler.setFormatter(formatter)
         logger.addHandler(handler)
-        
+
     return logger
