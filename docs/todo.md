@@ -1,5 +1,6 @@
 # A pinned TODO list of tasks for the whole project - both server and client (raspberry pi software).
 
+- Rewrite the architecture to allow more client connections?
 - Implement the actul I2S code on the PI client to access the connected mic and speaker.
 - Test that the sound processing, mic processing etc. are clear, efficient and reliable.
 - ElevenLabs: retrain the voice using some samples from the voice model itself. Sometimes, some generations are randomly high-pitched.
