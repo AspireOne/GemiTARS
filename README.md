@@ -1,33 +1,50 @@
-# GemiTARS: A replica of TARS from Intersellar
+# GemiTARS: A replica of TARS from Interstellar
 
-A replica of TARS from interstellar, featuring continuous conversations powered by Gemini Live API. Uses a distributed architecture with a compact Raspberry Pi Zero 2W "head" for local wake word detection and I/O, while a powerful server "brain" manages AI processing, state management, and other processing, enabling rich voice and vision interactions with function calling capabilities.
+A replica of TARS from Interstellar, featuring continuous conversations powered by Gemini Live API. Uses a distributed architecture with a compact Raspberry Pi Zero 2W "head" for local wake word detection and I/O, while a powerful server "brain" manages AI processing, state management, and other processing, enabling rich voice interactions with function calling capabilities.
 
 This file provides overview and high level goals/features and architecture of the project.
 
 `/server`: contains the server code.
 `/pi_software`: contains the code for the Raspberry Pi client.
 
-- To see the current state of the project: [`docs/todo.md`](docs/todo.md).
+- To see reamining tasks: [`docs/TODO.md`](docs/TODO.md).
 - External documentation is in [`docs/external/`](docs/external_docs/) (for gemini Live API, ElevenLabs TTS, OpenWakeWord etc.).
-- The Raspberry Pi software is in [`pi_software/`](pi_software/).
-- [`/tars_voice_clips`](/tars_voice_clips) contains most of tars' voice from the original movie with the voice isolated. Can  
-  be used to train a model for voice cloning.
+- Technical description of the system architecture: [`docs/system_architecture.md`](docs/system_architecture.md).
+
+- The Raspberry Pi client software is in [`pi_software/`](pi_software/).
+- The server/processing hub software is in [`server/`](server/).
 
 ## Core Features Overview
 
-- **Hotword Detection**: Listening for a wake word ("Hey, TARS!") using local detection on the Raspberry Pi.
-- **Continuous Conversation**: After activation, the assistant actively listens for a set duration (connection to Gemini LIVE API is established), allowing for natural, back-and-forth conversation without re-triggering the hotword. When a timeout is reached, the assistant will return to passive hotword listening.
-- **Direct Audio-to-LLM**: Audio is streamed directly to the Gemini Live API, skipping an intermediate transcription step to minimize latency and improve conversational flow.
-- **Multimodal Input**: (later feature) Capable of capturing and sending on-demand images to the LLM alongside voice commands for visual context.
-- **Custom Voice Output**: Generates a high-fidelity TARS-like voice using ElevenLabs' text-to-speech (TTS) streaming service.
-- **Distributed Architecture**: A compact, low-profile Raspberry Pi Zero 2W unit handles local wake word detection and sensor I/O, while a powerful server manages all the heavy lifting (AI processing, audio processing, logic...).
-- **Function Calling:** The assistant will be able to process complex conversational sentences and execute functions (e.g., control smart home devices, perform internet searches...).
+### Currently Implemented ✅
+
+- **Hotword Detection**: Local, offline listening for wake words ("Hey, TARS!" and "TARS") using OpenWakeWord models on the Raspberry Pi. Includes configurable thresholds and cooldown mechanisms to prevent false triggers.
+
+- **Continuous Conversation**: After activation, the assistant maintains an active connection to the Gemini Live API for a configurable duration (default 30 seconds), allowing natural back-and-forth conversation without re-triggering the hotword. The timeout resets with each user interaction.
+
+- **Direct Audio-to-LLM**: Raw audio from the Raspberry Pi microphone is streamed directly to the Gemini Live API via the server, bypassing local speech-to-text transcription to minimize latency and improve conversational flow.
+
+- **Custom TARS Voice Output**: High-fidelity text-to-speech using ElevenLabs' streaming API with a custom TARS-like voice profile. Audio is streamed in real-time chunks to minimize response latency.
+
+- **Distributed Architecture**: A compact Raspberry Pi Zero 2W handles local wake word detection and audio I/O, while a powerful server manages AI processing, state management, and API integrations. Communication occurs over a persistent WebSocket connection.
+
+- **Robust State Management**: Both client and server implement comprehensive state machines to handle the conversation flow (passive listening → active conversation → processing → speaking → back to active).
+
+- **Real-time Audio Streaming**: Bidirectional audio streaming with proper synchronization - microphone audio flows from Pi → Server → Gemini, while TTS audio flows from ElevenLabs → Server → Pi.
+
+### Planned Features 🔮
+
+- **Multimodal Input**: Integration with the Raspberry Pi camera for visual context. Users will be able to say phrases like "look at this" or "what do you see?" to include images in their queries to the LLM.
+
+- **Function Calling**: The assistant will process complex conversational requests and execute functions such as controlling smart home devices, performing web searches, or interacting with external APIs and services.
+
+- **Enhanced Error Recovery**: More sophisticated handling of network interruptions, including client-side audio buffering during connection issues and automatic retry mechanisms.
 
 ## Gemini Live API
 
 Extremely fast and low-latency LLM API that:
 
-- Takes in not only text text, but also images, audio, or combination of these.
+- Takes in not only text, but also images, audio, or combination of these.
 - Streams back responses in real-time.
 - Has a built-in VAD (voice activity detection) to automatically wait for a user's speech before responding etc.
 - Has a Live mode, where it itself manages the whole session - it takes in the user's talking (input audio) directly, and decides when and how to respond, whether to be interrupted etc. - no processing on the side of our server.
@@ -36,73 +53,80 @@ Extremely fast and low-latency LLM API that:
 
 The system uses a distributed architecture split into two main components communicating over WiFi, designed to keep the user-facing device compact while leveraging powerful server-side processing.
 
-- **Remote Unit (The "Head"):** A small, Raspberry Pi Zero 2W-based device that handles local wake word detection and physical input/output. Its responsibilities are:
-  - Locally detecting the wake word using OpenWakeWord.
-  - Capturing microphone audio and streaming it to the processing hub only after wake word detection.
-  - Capturing on-demand camera images and sending them to the server.
-  - Receiving the final audio stream and playing it through a connected speaker.
-- **Processing Hub (The "Brain"):** A server that runs the core logic. It is responsible for:
-  - Receiving the raw audio (or image) streams from the Raspberry Pi after wake word trigger.
-  - Communicating with a cloud-based Large Language Model (LLM) for conversation and logic.
-  - Managing the entire interaction flow and state.
-  - Sending the final, synthesized speech back to the Raspberry Pi for playback.
+- **Pi Client (The "Head"):** A Raspberry Pi Zero 2W-based device that handles local wake word detection and physical input/output. Its responsibilities are:
+
+  - Locally detecting wake words using OpenWakeWord with custom TARS models (`Hey_Tars.onnx`, `Tars.onnx`)
+  - Maintaining a persistent WebSocket connection to the server via `PersistentWebSocketClient` with automatic reconnection and heartbeat monitoring
+  - Capturing microphone audio and streaming it to the server only after wake word detection
+  - Managing client-side state through `StateMachine` (IDLE → LISTENING_FOR_HOTWORD → HOTWORD_DETECTED → ACTIVE_SESSION)
+  - Receiving and playing back TTS audio streams through the connected speaker
+  - Coordinating the session lifecycle via `SessionManager`
+
+- **Server (The "Brain"):** A server that orchestrates the complete conversation flow. It is responsible for:
+  - Managing WebSocket connections from Pi clients via `PiWebsocketService`
+  - Coordinating conversation state through `ConversationManager` (PASSIVE → ACTIVE → PROCESSING → SPEAKING)
+  - Interfacing with the Gemini Live API via `GeminiService` for real-time audio processing and response generation
+  - Converting text responses to speech via `ElevenLabsService` using streaming TTS
+  - Handling session timeouts and graceful cleanup of resources
+  - Managing bidirectional audio streaming with proper synchronization and playback completion handshakes
 
 This distributed approach was chosen to fulfill the goal of a minimal physical footprint for the user-facing device, with the Raspberry Pi Zero 2W acting as an efficient "sensor pod" that handles local wake word detection for privacy and bandwidth efficiency, while offloading intensive AI computation to the more powerful server. The direct LLM audio processing (via Gemini Live) reduces latency by eliminating the traditional Speech-to-Text transcription step, while high-fidelity TTS (ElevenLabs) provides authentic TARS voice synthesis rather than attempting complex real-time voice transformation.
 
-## The logic flow
+## The Logic Flow
 
-The GemiTARS system operates through several distinct phases, seamlessly transitioning between passive listening and active conversation modes (details of this implementation plan might change):
+The GemiTARS system operates through several distinct phases, seamlessly transitioning between passive listening and active conversation modes:
 
-Tl;Dr:
+**TL;DR:**
 
 - Raspberry Pi continuously listens for hotword locally using OpenWakeWord.
-- If hotword is detected, it starts streaming audio to the server and plays an acknowledgment tone ("mhm"...).
+- If hotword is detected, it starts streaming audio to the server and plays an acknowledgment tone.
 - Server establishes Gemini Live API session.
 - The conversation now continues through the Gemini Live API, with the Raspberry Pi streaming audio to the server and the server streaming audio (the LLM response audio) back to the Raspberry Pi.
-- When Gemini Live API returns text -> send it to ElevenLabs -> stream back its audio chunks directly to the Raspberry Pi.
+- When Gemini Live API returns text → send it to ElevenLabs → stream back its audio chunks directly to the Raspberry Pi.
 - If no sound is detected / no reply is coming, time out and return to passive listening mode.
 
-note:
-A user cannot interrupt TARS while he is thinking (PROCESSING) or speaking (SPEAKING). If the user says "Stop" or "Wait, I meant something else," the microphone is effectively off. This is a current decision and might be changed in the future.
+**Note:**
+A user cannot interrupt TARS while he is thinking (PROCESSING) or speaking (SPEAKING). If the user says "Stop" or "Wait, I meant something else," the microphone is effectively off. This is a current design decision and might be changed in the future.
 
 **1. Passive Listening State**
 
-- The **Remote Unit** (Raspberry Pi) continuously monitors microphone audio locally for the wake word "Hey, TARS!" using OpenWakeWord for offline recognition.
-- No audio is streamed to the server during this phase, preserving privacy and bandwidth.
-- System remains in low-power mode, with minimal processing overhead on the Pi.
+- The Pi Client runs `HotwordDetector` which continuously monitors microphone audio locally for wake words ("Hey, TARS!" or "TARS") using OpenWakeWord models
+- No audio is streamed to the server during this phase, preserving privacy and bandwidth
+- System remains in low-power mode with the server in `PASSIVE` state
 
 **2. Wake Word Activation**
 
-- When "Hey, TARS!" is detected locally on the Raspberry Pi, the system immediately transitions to **Active Conversation Mode**.
-- The Pi starts streaming audio to the server and plays a local acknowledgment tone (e.g., "yeah", "mhm", "listening", "Yes sir"...).
-- The server establishes a **Gemini Live API session** for real-time, bidirectional audio streaming.
-- A conversation timeout timer begins (configurable duration, typically 30-60 seconds).
+- When a wake word is detected locally, the Pi Client transitions to `ACTIVE_SESSION` state
+- The client sends a `{"type": "hotword_detected"}` JSON message over the persistent WebSocket
+- The server receives this message and transitions from `PASSIVE` to `ACTIVE` state
+- Server initializes a new `GeminiService` session and establishes connection to Gemini Live API
+- Conversation timeout timer begins (configurable, default 30 seconds)
 
 **3. Active Conversation Mode**
 
-- **Direct Audio Streaming**: Raw audio from the Raspberry Pi microphone is streamed directly to the Gemini Live API via the server.
-  - No local speech-to-text transcription occurs, reducing latency.
-  - Gemini Live handles real-time audio processing and understanding.
-- **Multimodal Input**: User can request visual context by saying phrases like "look at this" or "what do you see?"
-  - Raspberry Pi captures a still image using the connected camera.
-  - Image is sent to the server and included in the next Gemini API request alongside audio.
-- **Continuous Listening**: The system maintains the connection and actively listens for follow-up questions or commands.
-- **Conversation Timer**: Resets with each user interaction to maintain natural conversation flow.
+- **Audio Streaming**: Pi Client streams raw microphone audio as binary WebSocket messages to the server
+- **Server Processing**: Server forwards audio chunks to `GeminiService` which streams them to Gemini Live API
+- **Real-time Transcription**: Gemini Live provides real-time speech transcription that the server logs for monitoring
+- **Continuous Listening**: System maintains the connection and actively listens for follow-up input
+- **Activity Tracking**: Each user interaction resets the conversation timeout via `ConversationManager.update_activity()`
 
 **4. Response Generation and Playback**
 
-- **LLM Processing**: Gemini Live processes the audio (and optional image) input and generates a text response.
-- **Function Calling**: If the response includes function calls (smart home control, web searches, etc.), these are executed on the server.
-- **Voice Synthesis**: The text response is sent to **ElevenLabs TTS API** for conversion to TARS-like voice.
-- **Audio Streaming**: The synthesized audio is streamed back to the Raspberry Pi in real-time.
-- **Playback**: Raspberry Pi plays the audio through the connected I²S speaker/amplifier.
+- **Turn Completion**: When Gemini Live signals turn completion, server transitions to `PROCESSING` state
+- **TTS Conversion**: Server sends the text response to `ElevenLabsService` for conversion to TARS-like voice
+- **Streaming Protocol**:
+  - Server sends `{"type": "start_of_tts_stream"}` to signal audio playback start
+  - Server transitions to `SPEAKING` state
+  - Server streams TTS audio chunks as binary messages to the Pi Client
+  - Server sends `{"type": "tts_stream_end"}` when streaming completes
+- **Playback Completion**: Pi Client responds with `{"type": "playback_complete"}` after finishing audio playback
+- **State Return**: Server transitions back to `ACTIVE` state, ready for next user input
 
-**5. Conversation Continuation or Timeout**
+**5. Session Management**
 
-- **Active Listening Continues**: After each response, the system continues listening for follow-up input.
-- **Timer Management**: Each user interaction resets the conversation timeout.
-- **Natural Conversation**: Users can interrupt, ask follow-up questions, or change topics without re-triggering the wake word.
-- **Timeout Handling**: If no user input is detected within the timeout period, the system gracefully closes the Gemini Live session and reverts back to passive listening mode.
+- **Timeout Monitoring**: Server's `_conversation_management_loop()` continuously checks for conversation timeout
+- **Graceful Termination**: On timeout, server sends `{"type": "session_end"}` and transitions to `PASSIVE`
+- **Resource Cleanup**: `GeminiService` session is closed, background tasks are cancelled, Pi Client returns to hotword listening
 
 **6. Return to Passive State**
 
@@ -113,6 +137,29 @@ A user cannot interrupt TARS while he is thinking (PROCESSING) or speaking (SPEA
 
 **Error Handling and Edge Cases**
 
-- **Network Interruptions**: If WiFi connection is lost, Raspberry Pi attempts reconnection while buffering audio locally.
-- **Audio Quality Issues**: Automatic gain control and noise reduction (e.g., via ALSA) are applied to microphone input.
-- **Concurrent Requests**: System queues multiple rapid inputs to prevent audio stream conflicts.
+**Connection Management and Recovery**
+
+- **Persistent WebSocket Connection**: The Pi Client maintains a persistent connection with automatic reconnection using exponential backoff (up to 10 attempts with delays from 1 to 60 seconds).
+- **Heartbeat Monitoring**: Client sends periodic ping frames to detect connection issues and trigger reconnection when needed.
+- **Connection State Management**: Robust state tracking (DISCONNECTED → CONNECTING → CONNECTED → SHUTTING_DOWN) with proper cleanup between states.
+- **Graceful Degradation**: If WebSocket connection fails, the client continues attempting to reconnect while the server can handle multiple client connection attempts.
+
+**Session and Resource Management**
+
+- **Client Disconnection Handling**: When a client disconnects unexpectedly during an active session, the server automatically performs session cleanup - closing Gemini API connections, cancelling background tasks, and returning to passive state.
+- **Service Failure Tolerance**: If ElevenLabs TTS service fails to initialize, the system continues operating in text-only mode rather than crashing.
+- **Timeout Management**: Conversation sessions automatically timeout after configurable periods (default 30 seconds) with proper resource cleanup.
+- **Graceful Shutdown**: Both client and server implement controlled shutdown procedures with task cancellation timeouts (5 seconds) to prevent resource leaks.
+
+**Audio and Communication Error Handling**
+
+- **Message Send Failures**: Client handles WebSocket send failures gracefully, with timeout detection and connection state validation before attempting to send.
+- **Audio Streaming Resilience**: Audio send failures return status indicators rather than crashing, allowing the system to continue operating.
+- **JSON Parsing Protection**: Both client and server include JSON parsing error handling to prevent crashes from malformed control messages.
+- **Playback Interruption**: Server properly handles connection closures during TTS audio streaming, cleaning up audio queues and resetting conversation state.
+
+**Current Limitations**
+
+- **No Local Audio Buffering**: The Pi Client does not currently buffer audio locally during network interruptions - audio is simply dropped until connection is restored.
+- **Single Session Handling**: The system handles one conversation session at a time per client rather than queuing multiple concurrent requests.
+- **Manual Audio Quality**: Audio quality improvements rely on proper microphone configuration rather than automated noise reduction or gain control.

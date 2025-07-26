@@ -14,6 +14,7 @@ class Config:
 
     # Audio Settings (must match server)
     AUDIO_SAMPLE_RATE = 16000
+    # TODO: Alter? no? yes?
     AUDIO_BLOCK_SIZE = 1600  # 100ms of audio
     AUDIO_DTYPE = 'int16'
     AUDIO_CHANNELS = 1

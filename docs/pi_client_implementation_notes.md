@@ -136,17 +136,8 @@ python
 
 
 Environment Variables Strategy:
-.env.shared:
-
-## Audio settings that might need runtime adjustment
-HOTWORD_THRESHOLD=0.3
-AUDIO_BLOCK_SIZE=1600
-
-.env.pi
-
-SERVER_HOST=192.168.1.100
-AUDIO_INPUT_DEVICE=hw:1,0
-AUDIO_OUTPUT_DEVICE=hw:1,1
+- .env.shared
+- .env.pi
 
 Benefits of This Approach:
 DRY Principle: Audio and protocol settings are defined once

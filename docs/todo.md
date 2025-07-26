@@ -1,5 +1,8 @@
 # A pinned TODO list of tasks for the whole project - both server and client (raspberry pi software).
 
+**NOTE: the list might be messy - written in hurry/general language, things that might turn out to not be implementable etc. so take it with a graint of salt.**
+
+- Play a local acknowledgment sound ("mhm," "listening...").
 - Rewrite the architecture to allow more client connections?
 - Implement the actul I2S code on the PI client to access the connected mic and speaker.
 - Test that the sound processing, mic processing etc. are clear, efficient and reliable.
@@ -17,8 +20,8 @@
 - Dynamic Configuration of preferences: Allow to save preferences, possibly in a system of memories (humor setting, personality etc.).
 - Long term memory: System of storing memories/information (e.g. vector DB), and other memory solutions (e.g. always show previous chat context of the last 1 hour etc.?)
 - Handle interruptions: Interruptions handling (includes echo/feedback cancellation (since the mic is listening while the speaker is outputting audio) etc.)
-
-## Raspberry Pi Client Software TODO
+- Custom verifier model - can increase accuracy drastically, but is constrained to a set of known voices. https://github.com/dscripka/openWakeWord#user-specific-models
+## PI Software TODO
 
 ### 1. Implement Session Timeout
 
