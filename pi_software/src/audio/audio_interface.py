@@ -24,12 +24,15 @@ class AudioInterface(ABC):
         pass
     
     @abstractmethod
-    async def start_recording(self, callback: Callable[[bytes], Any]) -> None:
+    async def start_recording(self, callback: Callable[[bytes], Any]) -> bool:
         """
         Starts recording audio from the microphone.
         
         Args:
             callback: A function to be called with each new chunk of audio data.
+            
+        Returns:
+            True if recording started successfully, False otherwise.
         """
         pass
     
@@ -51,6 +54,16 @@ class AudioInterface(ABC):
     @abstractmethod
     async def wait_for_playback_completion(self) -> None:
         """Waits until all queued audio chunks have been played."""
+        pass
+    
+    @abstractmethod
+    async def check_audio_health(self) -> bool:
+        """
+        Checks if audio devices are healthy and available.
+        
+        Returns:
+            True if audio devices are functioning properly, False otherwise.
+        """
         pass
     
     @abstractmethod

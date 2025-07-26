@@ -80,50 +80,111 @@ class SessionManager:
     def on_hotword_detected(self):
         """Callback executed when hotword is detected."""
         # The start_session method will handle the state transition
-        asyncio.run_coroutine_threadsafe(self.start_session(), self.loop)
+        future = asyncio.run_coroutine_threadsafe(self.start_session(), self.loop)
+        future.add_done_callback(self._handle_session_start_result)
+
+    def _handle_session_start_result(self, future):
+        """Handle the result of session start attempts."""
+        try:
+            success = future.result()
+            if not success:
+                logger.warning("Session start failed, remaining in listening state")
+        except Exception as e:
+            logger.error(f"Session start raised exception: {e}", exc_info=True)
 
     async def start_session(self):
-        """Start an active conversation session."""
-        # Check if we're connected
-        if not self.websocket_client.is_connected():
-            logger.warning("Cannot start session: not connected to server")
-            await self._start_hotword_listening()  # Go back to listening
-            return
-        
-        logger.info("Starting conversation session")
-        
-        # Transition to active session
-        if not self.state_machine.transition_to(ClientState.ACTIVE_SESSION):
-            logger.warning("Could not transition to ACTIVE_SESSION state.")
-            return
-        
-        # Stop hotword detection, start conversation audio
-        await self.audio_manager.stop_recording()
-        
-        # Notify server
-        await self.websocket_client.send_message({"type": "hotword_detected"})
-        
-        # Start streaming audio to server
-        await self.audio_manager.start_recording(
-            lambda audio_chunk: asyncio.run_coroutine_threadsafe(
-                self.websocket_client.send_audio(audio_chunk), self.loop
-            )
-        )
+        """Start an active conversation session with comprehensive error handling."""
+        try:
+            # Check connection first
+            if not self.websocket_client.is_connected():
+                logger.warning("Cannot start session: not connected to server")
+                return False
+            
+            logger.info("Starting conversation session")
+            
+            # Attempt state transition
+            if not self.state_machine.transition_to(ClientState.ACTIVE_SESSION):
+                logger.error("Failed to transition to ACTIVE_SESSION")
+                return False
+            
+            # Stop hotword detection safely
+            try:
+                await self.audio_manager.stop_recording()
+            except Exception as e:
+                logger.error(f"Failed to stop hotword recording: {e}")
+                await self._recover_to_listening_state()
+                return False
+            
+            # Notify server with error handling
+            try:
+                success = await self.websocket_client.send_message_with_confirmation(
+                    {"type": "hotword_detected"}
+                )
+                if not success:
+                    logger.error("Failed to notify server of hotword detection")
+                    await self._recover_to_listening_state()
+                    return False
+            except Exception as e:
+                logger.error(f"Error notifying server: {e}")
+                await self._recover_to_listening_state()
+                return False
+            
+            # Start session audio recording
+            try:
+                success = await self.audio_manager.start_recording(
+                    lambda audio_chunk: self._safe_send_audio(audio_chunk)
+                )
+                if not success:
+                    logger.error("Failed to start session audio recording")
+                    await self._recover_to_listening_state()
+                    return False
+            except Exception as e:
+                logger.error(f"Error starting session recording: {e}")
+                await self._recover_to_listening_state()
+                return False
+            
+            logger.info("Session started successfully")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Unexpected error starting session: {e}", exc_info=True)
+            await self._recover_to_listening_state()
+            return False
 
     async def end_session(self):
-        """End the active conversation session."""
+        """End the active conversation session with enhanced error handling."""
         logger.info("Ending conversation session")
         
-        # Stop recording
-        await self.audio_manager.stop_recording()
-        
-        # CRITICAL: DO NOT disconnect WebSocket - it stays connected!
-        
-        # Wait for any pending playback
-        await self.audio_manager.wait_for_playback_completion()
-        
-        # Return to hotword listening
-        await self._start_hotword_listening()
+        try:
+            # Stop recording safely
+            try:
+                await self.audio_manager.stop_recording()
+            except Exception as e:
+                logger.error(f"Error stopping recording during session end: {e}")
+                # Continue with cleanup even if this fails
+            
+            # CRITICAL: DO NOT disconnect WebSocket - it stays connected!
+            
+            # Wait for any pending playback
+            try:
+                await self.audio_manager.wait_for_playback_completion()
+            except Exception as e:
+                logger.error(f"Error waiting for playback completion: {e}")
+                # Continue with state recovery
+            
+            # Return to hotword listening
+            await self._start_hotword_listening()
+            logger.info("Session ended successfully")
+            
+        except Exception as e:
+            logger.error(f"Error during session end: {e}", exc_info=True)
+            # Ensure we attempt recovery even if end_session fails
+            try:
+                await self._recover_to_listening_state()
+            except Exception as recovery_error:
+                logger.error(f"Recovery also failed: {recovery_error}", exc_info=True)
+                # Last resort: force state to IDLE
+                self.state_machine.transition_to(ClientState.IDLE)
 
     def on_audio_received(self, audio_chunk: bytes):
         """Handle TTS audio from server."""
@@ -150,3 +211,40 @@ class SessionManager:
         await self.audio_manager.wait_for_playback_completion()
         logger.info("Playback complete")
         await self.websocket_client.send_message({"type": "playback_complete"})
+
+    async def _recover_to_listening_state(self):
+        """Recover to a consistent listening state after errors."""
+        logger.info("Recovering to listening state...")
+        
+        try:
+            # Ensure audio is stopped
+            await self.audio_manager.stop_recording()
+            
+            # Return to listening state
+            await self._start_hotword_listening()
+            
+            logger.info("Successfully recovered to listening state")
+            
+        except Exception as e:
+            logger.error(f"Error during state recovery: {e}", exc_info=True)
+            # If recovery fails, try transitioning to IDLE
+            self.state_machine.transition_to(ClientState.IDLE)
+
+    def _safe_send_audio(self, audio_chunk: bytes):
+        """Safely send audio with error handling."""
+        try:
+            future = asyncio.run_coroutine_threadsafe(
+                self.websocket_client.send_audio(audio_chunk), self.loop
+            )
+            # Don't wait for completion to avoid blocking audio thread
+            future.add_done_callback(self._handle_send_audio_result)
+        except Exception as e:
+            logger.error(f"Error scheduling audio send: {e}")
+
+    def _handle_send_audio_result(self, future):
+        """Handle the result of audio send operations."""
+        try:
+            future.result()  # This will raise if the send failed
+        except Exception as e:
+            logger.warning(f"Audio send failed: {e}")
+            # Optionally trigger session recovery if too many failures

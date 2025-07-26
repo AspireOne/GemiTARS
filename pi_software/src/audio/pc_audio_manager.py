@@ -45,14 +45,15 @@ class PcAudioManager(AudioInterface):
             logger.error(f"Error initializing audio devices: {e}", exc_info=True)
             return False
 
-    async def start_recording(self, callback: Callable[[bytes], Any]) -> None:
+    async def start_recording(self, callback: Callable[[bytes], Any]) -> bool:
         """Starts capturing audio from the default microphone."""
-        self.audio_callback = callback
         if self.input_stream:
             logger.warning("Microphone stream already running.")
-            return
+            return True  # Already recording is considered success
         
         try:
+            self.audio_callback = callback
+            
             self.input_stream = sd.InputStream(
                 samplerate=Config.AUDIO_SAMPLE_RATE,
                 blocksize=Config.AUDIO_BLOCK_SIZE,
@@ -60,11 +61,17 @@ class PcAudioManager(AudioInterface):
                 channels=Config.AUDIO_CHANNELS,
                 callback=self._mic_callback
             )
+            
             self.input_stream.start()
-            logger.info("Microphone stream started.")
+            logger.info("Microphone stream started successfully.")
+            return True
+            
         except Exception as e:
             logger.error(f"Failed to start microphone stream: {e}", exc_info=True)
+            # Ensure clean state
             self.input_stream = None
+            self.audio_callback = None
+            return False
 
     def _mic_callback(self, indata: np.ndarray, frames: int, time, status: sd.CallbackFlags):
         """Internal callback for sounddevice to process microphone data."""
@@ -118,6 +125,44 @@ class PcAudioManager(AudioInterface):
     async def wait_for_playback_completion(self) -> None:
         """Waits until all queued audio chunks have been played."""
         await self.playback_queue.join()
+
+    async def check_audio_health(self) -> bool:
+        """Check if audio devices are healthy and available."""
+        try:
+            # Query devices to ensure they're still available
+            devices = sd.query_devices()
+            logger.debug(f"Audio devices check: {len(devices) if hasattr(devices, '__len__') else 'single device'}")
+            
+            # Check if default devices are available
+            try:
+                default_input = sd.default.device[0]
+                default_output = sd.default.device[1]
+                
+                if default_input is None or default_output is None:
+                    logger.error("Default audio devices not available")
+                    return False
+            except Exception as e:
+                logger.error(f"Error checking default devices: {e}")
+                return False
+            
+            # Basic check to see if there are any input/output devices
+            devices_list = sd.query_devices()
+            if isinstance(devices_list, dict):  # Single device case
+                devices_list = [devices_list]
+            
+            has_input = any(dict(d).get('max_input_channels', 0) > 0 for d in devices_list)
+            has_output = any(dict(d).get('max_output_channels', 0) > 0 for d in devices_list)
+            
+            if not has_input or not has_output:
+                logger.error("No suitable input or output audio devices found")
+                return False
+            
+            logger.debug("Audio health check passed")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Audio health check failed: {e}", exc_info=True)
+            return False
 
     async def cleanup(self) -> None:
         """Cleans up all audio resources."""

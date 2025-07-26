@@ -91,19 +91,45 @@ class PersistentWebSocketClient:
         except Exception as e:
             logger.error(f"Failed to send message: {e}")
 
-    async def send_audio(self, audio_data: bytes):
+    async def send_message_with_confirmation(self, message: dict, timeout: float = 5.0) -> bool:
+        """Send a message and confirm it was sent successfully."""
+        if not self.is_connected() or not self._connection:
+            logger.warning(f"Cannot send message - not connected (status: {self.status.value})")
+            return False
+        
+        try:
+            await asyncio.wait_for(
+                self._connection.send(json.dumps(message)),
+                timeout=timeout
+            )
+            return True
+            
+        except asyncio.TimeoutError:
+            logger.warning(f"Message send timed out after {timeout}s")
+            return False
+        except websockets.exceptions.ConnectionClosed:
+            logger.warning("Failed to send message: connection closed")
+            return False
+        except Exception as e:
+            logger.error(f"Failed to send message: {e}")
+            return False
+
+    async def send_audio(self, audio_data: bytes) -> bool:
         """Send binary audio data to the server."""
         if not self.is_connected() or not self._connection:
-            logger.warning("Cannot send audio - not connected")
-            return
-            
+            logger.debug("Cannot send audio - not connected")
+            return False
+        
         try:
             await self._connection.send(audio_data)
+            return True
+            
         except websockets.exceptions.ConnectionClosed:
-            logger.warning("Failed to send audio: connection closed")
-            # Connection manager will handle reconnection
+            logger.debug("Failed to send audio: connection closed")
+            return False
         except Exception as e:
-            logger.error(f"Failed to send audio: {e}")
+            logger.warning(f"Failed to send audio: {e}")
+            return False
 
     async def _connection_manager(self):
         """Main connection management loop with automatic reconnection."""
