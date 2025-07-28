@@ -1,5 +1,8 @@
 # Hardware
 
+IMPROVEMENT:
+Tap his head to activate!! 100% reliability, less hassle, will start the conversation right away, and also is comical when you bonk his head and he says "Huh?!!"
+
 This document outlines the specifications, hardware integration, pinout, and setup for the hardware of this project - using a Raspberry Pi Zero 2W in a TARS-inspired voice assistant robot. The design focuses on local wake word detection (via OpenWakeWord), ALSA audio filtering (e.g., 100Hz-4000Hz for voice), and relaying audio to a remote server for processing. Components are chosen for compactness, low cost, and flexibility in a 3D-printed enclosed case.
 
 External sources for reference:
