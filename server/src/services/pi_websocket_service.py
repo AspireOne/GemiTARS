@@ -4,6 +4,7 @@ Pi Websocket Service: Concrete implementation for Raspberry Pi communication.
 
 import asyncio
 import json
+import socket
 from typing import Optional, Any
 import websockets
 from websockets.exceptions import ConnectionClosed
@@ -18,7 +19,7 @@ class PiWebsocketService(PiInterfaceService):
     Manages WebSocket communication with a single Raspberry Pi client.
     """
     
-    # TODO: Move the port to a config/settings file!!
+    # TODO: Move the port to a env/config/settings file!!
     def __init__(self, host: str = "0.0.0.0", port: int = 7456):
         self.host = host
         self.port = port
@@ -32,8 +33,18 @@ class PiWebsocketService(PiInterfaceService):
         self.audio_callback: Optional[AudioCallback] = None
         self.disconnect_callback: Optional[DisconnectCallback] = None
 
+    def _get_local_ip(self) -> str:
+        """Retrieves the local IP address of the machine."""
+        try:
+            # Connect to an external server to determine the local IP
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                s.connect(("8.8.8.8", 80))
+                return s.getsockname()[0]
+        except Exception:
+            return "127.0.0.1"
+
     async def initialize(
-        self, 
+        self,
         hotword_callback: HotwordCallback,
         audio_callback: AudioCallback,
         disconnect_callback: Optional[DisconnectCallback] = None
@@ -42,7 +53,10 @@ class PiWebsocketService(PiInterfaceService):
         self.audio_callback = audio_callback
         self.disconnect_callback = disconnect_callback
         
+        local_ip = self._get_local_ip()
         logger.info(f"Starting WebSocket server on {self.host}:{self.port}")
+        logger.info(f"Connect your Pi to: ws://{local_ip}:{self.port}")
+        
         try:
             server = await websockets.serve(self._connection_handler, self.host, self.port)
             await server.wait_closed()
