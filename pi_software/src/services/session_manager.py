@@ -269,7 +269,7 @@ class SessionManager:
         elif desired_state == "session":
             try:
                 success = await self.audio_manager.start_recording(
-                    lambda audio_chunk: self._safe_send_audio(audio_chunk)
+                    lambda audio_chunk: self._safe_send_audio(audio_chunk.tobytes())
                 )
                 if success:
                     self._audio_state = "session"

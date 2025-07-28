@@ -2,6 +2,7 @@
 Abstract Base Class for Audio I/O
 """
 
+import numpy as np
 from abc import ABC, abstractmethod
 from typing import Callable, Any
 
@@ -24,7 +25,7 @@ class AudioInterface(ABC):
         pass
     
     @abstractmethod
-    async def start_recording(self, callback: Callable[[bytes], Any]) -> bool:
+    async def start_recording(self, callback: Callable[[np.ndarray], Any]) -> bool:
         """
         Starts recording audio from the microphone.
         

@@ -21,7 +21,7 @@ class PcAudioManager(AudioInterface):
     def __init__(self):
         self.input_stream: Optional[sd.InputStream] = None
         self.output_stream: Optional[sd.OutputStream] = None
-        self.audio_callback: Optional[Callable[[bytes], Any]] = None
+        self.audio_callback: Optional[Callable[[np.ndarray], Any]] = None
         self.playback_queue: asyncio.Queue = asyncio.Queue()
         self.playback_task: Optional[asyncio.Task] = None
 
@@ -45,7 +45,7 @@ class PcAudioManager(AudioInterface):
             logger.error(f"Error initializing audio devices: {e}", exc_info=True)
             return False
 
-    async def start_recording(self, callback: Callable[[bytes], Any]) -> bool:
+    async def start_recording(self, callback: Callable[[np.ndarray], Any]) -> bool:
         """Starts capturing audio from the default microphone."""
         if self.input_stream:
             logger.warning("Microphone stream already running.")
@@ -78,7 +78,7 @@ class PcAudioManager(AudioInterface):
         if status:
             logger.warning(f"Microphone stream status: {status}")
         if self.audio_callback:
-            self.audio_callback(indata.tobytes())
+            self.audio_callback(indata)
 
     async def stop_recording(self) -> None:
         """Stops the microphone stream."""

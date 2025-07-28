@@ -42,15 +42,14 @@ class HotwordDetector:
         """Sets the function to call when the hotword is detected."""
         self.callback = callback
 
-    def process_audio(self, audio_chunk: bytes):
+    def process_audio(self, audio_chunk: np.ndarray):
         """
         Processes a chunk of audio and triggers the callback if the hotword is detected.
 
         Args:
             audio_chunk: A chunk of audio data (16-bit PCM).
         """
-        audio_np = np.frombuffer(audio_chunk, dtype=Config.AUDIO_DTYPE)
-        self.oww.predict(audio_np)
+        self.oww.predict(audio_chunk)
 
         max_confidence = 0.0
         for model_name in self.model_names:
