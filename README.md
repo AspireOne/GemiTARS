@@ -5,11 +5,12 @@ A replica of TARS from Interstellar, featuring continuous conversations powered 
 This file provides overview and high level goals/features and architecture of the project.
 
 **Project Structure:**
-- `/server`: Server/processing hub code
-- `/pi_software`: Raspberry Pi client code  
-- [`docs/TODO.md`](docs/TODO.md): Remaining tasks
+
+- [`server/`](server/): Server/processing hub code
+- [`pi_software/`](pi_software/): Raspberry Pi client code
 - [`docs/external/`](docs/external_docs/): External API documentation
 - [`docs/system_architecture.md`](docs/system_architecture.md): Detailed technical architecture
+- [`resources/tars_voice_clips`](resources/tars_voice_clips): all TARS voice segments extracted from Interstellar.
 
 ## Core Features Overview
 
@@ -38,14 +39,16 @@ This file provides overview and high level goals/features and architecture of th
 ## System Architecture
 
 **Pi Client (The "Head"):** Raspberry Pi Zero 2W handling:
+
 - Local wake word detection using OpenWakeWord with custom TARS models
-- Persistent WebSocket connection with automatic reconnection and heartbeat monitoring  
+- Persistent WebSocket connection with automatic reconnection and heartbeat monitoring
 - Audio capture and streaming (post-detection only)
 - Client-side state management (IDLE → LISTENING → HOTWORD_DETECTED → ACTIVE_SESSION)
 - TTS audio playback
 - Session lifecycle coordination
 
 **Server (The "Brain"):** Orchestrates complete conversation flow:
+
 - WebSocket connection management for Pi clients
 - Conversation state coordination (PASSIVE → ACTIVE → PROCESSING → SPEAKING)
 - Gemini Live API interface for real-time audio processing and response generation
@@ -58,29 +61,34 @@ This approach provides minimal physical footprint for the user-facing device whi
 ## The Logic Flow
 
 **1. Passive Listening**
+
 - Pi client continuously monitors microphone locally for wake words
 - No audio streamed to server (privacy/bandwidth preservation)
 - Server remains in PASSIVE state
 
-**2. Wake Word Activation**  
+**2. Wake Word Activation**
+
 - Local detection triggers Pi client transition to ACTIVE_SESSION
 - Client sends `{"type": "hotword_detected"}` over WebSocket
 - Server transitions to ACTIVE and initializes Gemini Live session
 - Conversation timeout begins
 
 **3. Active Conversation**
+
 - Pi streams raw microphone audio as binary WebSocket messages
 - Server forwards audio to Gemini Live API
 - Real-time transcription logged for monitoring
 - Each interaction resets conversation timeout
 
 **4. Response Generation**
+
 - Gemini Live signals turn completion → server enters PROCESSING state
 - Text response sent to ElevenLabs for TTS conversion
 - Server enters SPEAKING state and streams audio chunks to Pi
 - Pi confirms playback completion → server returns to ACTIVE
 
 **5. Session Management**
+
 - Continuous timeout monitoring by server
 - On timeout: server sends `{"type": "session_end"}` and returns to PASSIVE
 - Resource cleanup: Gemini session closed, tasks cancelled, Pi returns to hotword listening
@@ -90,21 +98,25 @@ This approach provides minimal physical footprint for the user-facing device whi
 ## Error Handling and Edge Cases
 
 **Connection Management**
+
 - Persistent WebSocket with exponential backoff reconnection (up to 10 attempts, 1-60 second delays)
 - Heartbeat monitoring and connection state tracking
 - Graceful degradation during connection failures
 
-**Session and Resource Management**  
+**Session and Resource Management**
+
 - Automatic session cleanup on unexpected client disconnection
 - Service failure tolerance (continues in text-only mode if TTS fails)
 - Controlled shutdown with task cancellation timeouts to prevent resource leaks
 
 **Audio and Communication**
+
 - WebSocket send failure handling with timeout detection
-- JSON parsing protection against malformed messages  
+- JSON parsing protection against malformed messages
 - Audio streaming resilience with status indicators rather than crashes
 
 **Current Limitations**
+
 - No local audio buffering during network interruptions
 - Single session per client (no concurrent request queuing)
 - Manual audio quality (relies on proper microphone configuration)
