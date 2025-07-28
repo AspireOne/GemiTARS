@@ -156,7 +156,7 @@ tzdata==2025.2
 tzlocal==5.3.1
 Unidecode==1.4.0
 uritemplate==4.1.1
-urllib3==2.4.0
+urllib3==2.5.0
 virtualenv==20.31.2
 wcwidth==0.2.13
 websockets==15.0.1
