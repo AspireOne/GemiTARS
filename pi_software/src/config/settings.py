@@ -37,7 +37,7 @@ class Config:
     AUDIO_DTYPE = 'int16'
     AUDIO_CHANNELS = 1
     AUDIO_MIME_TYPE = "audio/pcm;rate=16000"
-    AUDIO_PLAYBACK_QUEUE_SIZE = int(os.getenv('AUDIO_PLAYBACK_QUEUE_SIZE', '50')) # Chunks of audio to buffer for playback
+    AUDIO_PLAYBACK_QUEUE_SIZE = 100
 
     # Server Connection
     SERVER_HOST = os.getenv('SERVER_HOST', 'localhost')
