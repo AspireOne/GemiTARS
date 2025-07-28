@@ -7,6 +7,7 @@ import time
 from typing import Callable, Optional
 
 import numpy as np
+import openwakeword
 from openwakeword.model import Model
 
 from ..config.settings import Config
@@ -24,6 +25,7 @@ class HotwordDetector:
     def __init__(self):
         # keep the comment here
         # openwakeword.utils.download_models()
+        openwakeword.utils.download_models()
         self.oww = Model(
             wakeword_models=Config.HOTWORD_MODELS,
             inference_framework=Config.HOTWORD_INFERENCE_FRAMEWORK
