@@ -8,8 +8,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-hey_tars_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'resources', 'Hey_Tars.onnx'))
-tars_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'resources', 'Tars.onnx'))
+# Determine the model file extension based on the inference framework
+_inference_framework = os.getenv('HOTWORD_INFERENCE_FRAMEWORK', 'onnx').lower()
+_model_extension = '.tflite' if _inference_framework == 'tflite' else '.onnx'
+
+# Define model paths
+hey_tars_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'resources', f'Hey_Tars{_model_extension}'))
+tars_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'resources', f'Tars{_model_extension}'))
 
 def _get_log_level():
     """Convert string log level to logging constant."""
@@ -38,6 +43,8 @@ class Config:
     SERVER_PORT = int(os.getenv('SERVER_PORT', '7456'))
     SERVER_URL = f"ws://{SERVER_HOST}:{SERVER_PORT}"
 
+    # Hotword Detection
+    HOTWORD_INFERENCE_FRAMEWORK = _inference_framework
     # Omit "alexa" for now - needs to somehow be downloaded to the openwakeword cache.
     HOTWORD_MODELS = [hey_tars_path, tars_path]
     HOTWORD_THRESHOLD = float(os.getenv('HOTWORD_THRESHOLD', '0.1'))  # OpenWakeWord's default is 0.5. Will need to be adjusted with the specific raspberry pi mic.

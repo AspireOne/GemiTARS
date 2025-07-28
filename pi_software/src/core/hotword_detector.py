@@ -7,7 +7,6 @@ import time
 from typing import Callable, Optional
 
 import numpy as np
-import openwakeword
 from openwakeword.model import Model
 
 from ..config.settings import Config
@@ -27,7 +26,7 @@ class HotwordDetector:
         # openwakeword.utils.download_models()
         self.oww = Model(
             wakeword_models=Config.HOTWORD_MODELS,
-            inference_framework='onnx'
+            inference_framework=Config.HOTWORD_INFERENCE_FRAMEWORK
             # !important' look at this https://github.com/dscripka/openWakeWord#installation for speech noise supression on linux
         )
         self.model_names = [os.path.splitext(os.path.basename(w))[0] if os.path.exists(w) else w for w in Config.HOTWORD_MODELS]
