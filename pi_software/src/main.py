@@ -30,6 +30,12 @@ async def main():
     # Initialize components
     state_machine = StateMachine()
     audio_manager = get_audio_manager()
+
+    # Initialize audio manager
+    if not await audio_manager.initialize():
+        logger.error("Failed to initialize audio manager. Exiting.")
+        return
+        
     hotword_detector = HotwordDetector()
     websocket_client = PersistentWebSocketClient()
     
