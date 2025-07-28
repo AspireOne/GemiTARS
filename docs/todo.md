@@ -6,6 +6,7 @@
 
 ## 🛠️ Core Tasks
 
+- [ ] 🟡 Potentially use bidirectional WS in elevenlab? https://elevenlabs.io/docs/best-practices/latency-optimization#websockets
 - [ ] 🔴 Play local acknowledgment sound (e.g., “mhm”, “listening...”) after hotword detection.
 - [ ] 🔴 Play sound before TARS replies, like "Mmmm..." to make it seem more snappy? (maybe)
 - [ ] 🔴 on RPI 2 W, USE .tflite (ARM) instead of .onnx!! More performant, but Windows (and my laptop) don't support it.

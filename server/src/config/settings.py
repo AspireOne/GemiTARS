@@ -38,7 +38,10 @@ No emotive filler, only seldom. Be concise and precise.
 Begin now. Respond only as TARS. This is not a simulation. This is an order.
 """
 
-    # VAD Settings
+    # TODO: Potentially use bidirectional WS in elevenlab? https://elevenlabs.io/docs/best-practices/latency-optimization#websockets
+    # NOTE: ElevenLabs' Time-to-first-byte is >200ms in EU! https://elevenlabs.io/docs/best-practices/latency-optimization#consider-geographic-proximity
+
+    # VAD Settings TODO: try out more values and also look at the code directly, there might be some variable missing here
     VAD_PREFIX_PADDING_MS = 40
     VAD_SILENCE_DURATION_MS = 800
 
@@ -47,8 +50,8 @@ Begin now. Respond only as TARS. This is not a simulation. This is an order.
     
     # ElevenLabs TTS Settings
     ELEVENLABS_VOICE_ID = "zsUvyVKkEvpw5ZMnMU2I" #"dXtC3XhB9GtPusIpNtQx"
-    ELEVENLABS_MODEL_ID = "eleven_flash_v2_5"  # Ultra-low latency model
-    ELEVENLABS_OUTPUT_FORMAT = "pcm_16000"      # 16kHz PCM for optimal ESP32 performance
-    ELEVENLABS_CHUNK_SIZE = 1024                # Streaming chunk size
+    ELEVENLABS_MODEL_ID = "eleven_flash_v2_5"    # Ultra-low latency model
+    ELEVENLABS_OUTPUT_FORMAT = "pcm_16000"       # 16kHz PCM for optimal PI performance
+    ELEVENLABS_CHUNK_SIZE = 1024                 # Streaming chunk size
     ELEVENLABS_STABILITY = 0.75                  # Voice stability (0-1)
-    ELEVENLABS_SIMILARITY_BOOST = 0.75          # Voice similarity (0-1) - match demo
+    ELEVENLABS_SIMILARITY_BOOST = 0.75           # Voice similarity (0-1) - match demo

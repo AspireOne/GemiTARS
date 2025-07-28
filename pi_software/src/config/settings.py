@@ -4,30 +4,43 @@ Configuration settings for the GemiTARS Pi Client.
 
 import logging
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 hey_tars_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'resources', 'Hey_Tars.onnx'))
 tars_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'resources', 'Tars.onnx'))
 
+def _get_log_level():
+    """Convert string log level to logging constant."""
+    level_str = os.getenv('LOG_LEVEL', 'DEBUG').upper()
+    return getattr(logging, level_str, logging.DEBUG)
+
+def _get_bool_env(key, default):
+    """Convert string environment variable to boolean."""
+    value = os.getenv(key, str(default)).lower()
+    return value in ('true', '1', 'yes', 'on')
+
 class Config:
     # Logging
-    LOG_LEVEL = logging.DEBUG
+    LOG_LEVEL = _get_log_level()
 
     # Audio Settings (must match server)
     AUDIO_SAMPLE_RATE = 16000
     # IMPACTS LATENCY! Ideally multiples of 80ms - '1280' for 80ms or '2560' for 160ms (can go even lower if needed for performace)
-    AUDIO_BLOCK_SIZE = 2560  # 100ms of audio 
+    AUDIO_BLOCK_SIZE = 2560
     AUDIO_DTYPE = 'int16'
     AUDIO_CHANNELS = 1
     AUDIO_MIME_TYPE = "audio/pcm;rate=16000"
 
     # Server Connection
-    SERVER_HOST = "localhost"
-    SERVER_PORT = 7456
+    SERVER_HOST = os.getenv('SERVER_HOST', 'localhost')
+    SERVER_PORT = int(os.getenv('SERVER_PORT', '7456'))
     SERVER_URL = f"ws://{SERVER_HOST}:{SERVER_PORT}"
 
     # Omit "alexa" for now - needs to somehow be downloaded to the openwakeword cache.
     HOTWORD_MODELS = [hey_tars_path, tars_path]
-    HOTWORD_THRESHOLD = 0.1 # OpenWakeWord's default is 0.5. Will need to be adjusted with the specific raspberry pi mic.
-    HOTWORD_BUFFER_SECONDS = 1.4 # How long does it take to say? + buffer
-    HOTWORD_REDETECTION_TIMEOUT_SECONDS = 2
-    HOTWORD_DEBUG_LOGGING = True  # Enable detailed confidence logging for debugging
+    HOTWORD_THRESHOLD = float(os.getenv('HOTWORD_THRESHOLD', '0.1'))  # OpenWakeWord's default is 0.5. Will need to be adjusted with the specific raspberry pi mic.
+    HOTWORD_BUFFER_SECONDS = 1.4  # How long does it take to say? + buffer
+    HOTWORD_REDETECTION_TIMEOUT_SECONDS = 2  # Timeout to prevent immediate re-detection
+    HOTWORD_DEBUG_LOGGING = _get_bool_env('HOTWORD_DEBUG_LOGGING', False)  # Enable detailed confidence logging for debugging
