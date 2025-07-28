@@ -6,14 +6,15 @@
 
 ## 🛠️ Core Tasks
 
-- [ ] 🔴 Play local acknowledgment sound (e.g., “mhm”, “listening...”).
+- [ ] 🔴 Play local acknowledgment sound (e.g., “mhm”, “listening...”) after hotword detection.
+- [ ] 🔴 Play sound before TARS replies, like "Mmmm..." to make it seem more snappy? (maybe)
 - [ ] 🔴 on RPI 2 W, USE .tflite (ARM) instead of .onnx!! More performant, but Windows (and my laptop) don't support it.
 - [ ] 🔴 Move relevant settingss from config file to .env file.
 - [ ] 🔴 Implement actual I2S mic/speaker code on the Pi client.
 - [ ] 🟠 Test mic/speaker reliability, audio clarity, and latency.
 - [ ] 🟠 Retrain ElevenLabs voice.
   - Use voice samples from the current model to reduce pitch inconsistency.
-- [ ] 🟠 Refactor session & state management
+- [ ] 🟠 Refactor session & state management (maybe?)
   - Reduce complexity and avoid server/client state desync.
   - Possibly merge passive/listening/processing/active phases.
 - [ ] 🟡 Noise cancellation
