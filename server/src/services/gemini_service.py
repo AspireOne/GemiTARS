@@ -12,13 +12,14 @@ This service encapsulates:
 
 import asyncio
 import os
-from typing import AsyncGenerator, Optional, Callable, AsyncContextManager
+from typing import Any, AsyncGenerator, Optional, Callable, AsyncContextManager, List
 from google import genai
 from google.genai import types
 from google.genai.live import AsyncSession
 
 from ..config.settings import Config
 from ..utils.logger import setup_logger
+from .available_tools import available_tools, tool_schemas
 
 logger = setup_logger(os.path.splitext(os.path.basename(__file__))[0])
 
@@ -30,10 +31,13 @@ class GeminiResponse:
         self.raw_response = raw_response
         self.text = raw_response.text if raw_response.text else ""
         self.is_turn_complete = (
-            raw_response.server_content and 
+            raw_response.server_content and
             raw_response.server_content.turn_complete
         ) if raw_response.server_content else False
         
+        # Handle tool calls
+        self.tool_call = raw_response.tool_call if raw_response.tool_call else None
+
         # Handle transcription
         self.transcription_text = ""
         self.transcription_finished = False
@@ -85,6 +89,7 @@ class GeminiService:
         # Default configuration with VAD enabled
         self.config: types.LiveConnectConfig = types.LiveConnectConfig(
             response_modalities=[types.Modality.TEXT],
+            tools=tool_schemas,
             input_audio_transcription=types.AudioTranscriptionConfig(),
             realtime_input_config=types.RealtimeInputConfig(
                 activity_handling=types.ActivityHandling.NO_INTERRUPTION,
@@ -96,13 +101,14 @@ class GeminiService:
                 )
             ),
             generation_config=types.GenerationConfig(
-                temperature=0.9,
+                temperature=0.85
             ),
         )
 
         # Extension points for future features
-        self.function_registry = {}
+        self.function_registry = {}  # Maps tool names to functions
         self.response_handlers = []
+        self.tools_config = None # For storing tool schemas
         
     def set_config(self, config: dict) -> None:
         """
@@ -111,7 +117,7 @@ class GeminiService:
         self.config = self.config.model_copy(update=config)
         
     def add_function(self, name: str, function: Callable) -> None:
-        """Register a function for function calling (future feature)."""
+        """Register a function for function calling."""
         self.function_registry[name] = function
         
     def add_response_handler(self, handler: Callable[[GeminiResponse], None]) -> None:
@@ -164,7 +170,7 @@ class GeminiService:
         
     async def receive_responses(self) -> AsyncGenerator[GeminiResponse, None]:
         """
-        Async generator that yields processed Gemini responses.
+        Async generator that yields processed Gemini responses and handles tool calls.
         
         Yields:
             GeminiResponse: Processed response objects
@@ -172,9 +178,12 @@ class GeminiService:
         if not self.session:
             raise RuntimeError("Session not started. Call start_session() first.")
             
-        while True:  # Keep processing responses continuously
+        while True:
             async for raw_response in self.session.receive():
                 response = GeminiResponse(raw_response)
+
+                if response.tool_call:
+                    asyncio.create_task(self._handle_tool_call(response.tool_call))
                 
                 # Apply custom response handlers
                 for handler in self.response_handlers:
@@ -213,9 +222,13 @@ class GeminiService:
         """Async context manager entry."""
         # Store the context manager from the client
         final_config = self.config
+        update_dict = {}
         if self.system_prompt:
-            # Use model_copy to create a new config object with the system prompt.
-            update_dict = {'system_instruction': self.system_prompt}
+            update_dict['system_instruction'] = self.system_prompt
+        if self.tools_config:
+            update_dict['tools'] = self.tools_config
+            
+        if update_dict:
             final_config = self.config.model_copy(update=update_dict)
 
         self._connection_manager = self.client.aio.live.connect(
@@ -234,10 +247,57 @@ class GeminiService:
     
     # Future extension methods
     
-    def enable_function_calling(self, functions: list) -> None:
-        """Enable function calling with provided function definitions (future feature)."""
-        # This will be implemented when function calling is added
-        pass
+    async def _handle_tool_call(self, tool_call: Any) -> None:
+        """Handle incoming tool calls from the Gemini API."""
+        logger.info(f"Handling tool call: {tool_call}")
+        function_responses = []
+        
+        for fc in tool_call.function_calls:
+            tool_name = fc.name
+            logger.info(f"Attempting to execute tool: '{tool_name}'")
+            
+            if tool_name in self.function_registry:
+                tool_func = self.function_registry[tool_name]
+                tool_args = dict(fc.args) if fc.args else {}
+                logger.info(f"Executing with args: {tool_args}")
+                
+                try:
+                    result = tool_func(**tool_args)
+                    logger.info(f"Tool '{tool_name}' executed successfully. Result: {result}")
+                    
+                    function_response = types.FunctionResponse(
+                        id=fc.id,
+                        name=tool_name,
+                        response={"result": result}
+                    )
+                    function_responses.append(function_response)
+                    
+                except Exception as e:
+                    logger.error(f"Error executing tool {tool_name}: {e}", exc_info=True)
+                    function_responses.append(types.FunctionResponse(
+                        id=fc.id,
+                        name=tool_name,
+                        response={"error": str(e)}
+                    ))
+            else:
+                logger.warning(f"Tool '{tool_name}' not found in registry.")
+
+        if function_responses and self.session:
+            logger.info(f"Sending tool responses: {function_responses}")
+            await self.session.send_tool_response(function_responses=function_responses)
+        else:
+            logger.warning("No function responses to send.")
+
+    def enable_function_calling(self, schemas: List[types.FunctionDeclaration], functions: dict) -> None:
+        """
+        Enable function calling with provided function definitions.
+        
+        Args:
+            schemas: A list of FunctionDeclaration objects for the API.
+            functions: A dictionary mapping function names to their implementations.
+        """
+        self.tools_config = [{"function_declarations": schemas}]
+        self.function_registry = functions
         
     def set_system_instruction(self, instruction: str) -> None:
         """

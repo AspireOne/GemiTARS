@@ -21,6 +21,7 @@ from .services.gemini_service import GeminiService
 from .services.pi_interface import PiInterfaceService
 from .services.pi_websocket_service import PiWebsocketService
 from .services.elevenlabs_service import ElevenLabsService
+from .services.available_tools import tool_schemas, available_tools
 from .core.conversation_state import ConversationManager, ConversationState
 from .config.settings import Config
 from .utils.logger import setup_logger
@@ -160,6 +161,10 @@ class TARSAssistant:
         # Initialize and start Gemini session
         try:
             self.gemini_service = GeminiService(system_prompt=Config.SYSTEM_PROMPT)
+            self.gemini_service.enable_function_calling(
+                schemas=tool_schemas,
+                functions=available_tools
+            )
             await self.gemini_service.start_session()
             
             # Transition to active conversation
@@ -227,6 +232,9 @@ class TARSAssistant:
 
         try:
             async for response in self.gemini_service.receive_responses():
+                # Log the raw response for debugging tool usage
+                logger.debug(f"RAW GEMINI RESPONSE: {response.raw_response}")
+
                 if response.text:
                     full_response, is_processing = self._handle_gemini_text_chunk(
                         response.text, full_response, is_processing
