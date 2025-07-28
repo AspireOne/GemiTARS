@@ -1,40 +1,10 @@
-- On this page
-
-- [Overview of supported tools](https://ai.google.dev/gemini-api/docs/live-tools#tools-overview)
-- [Function calling](https://ai.google.dev/gemini-api/docs/live-tools#function-calling)
-- [Asynchronous function calling](https://ai.google.dev/gemini-api/docs/live-tools#async-function-calling)
-- [Code execution](https://ai.google.dev/gemini-api/docs/live-tools#code-execution)
-- [Grounding with Google Search](https://ai.google.dev/gemini-api/docs/live-tools#google-search)
-- [Combining multiple tools](https://ai.google.dev/gemini-api/docs/live-tools#combine-tools)
-- [What's next](https://ai.google.dev/gemini-api/docs/live-tools#whats-next)
-
 # Tool use with Live API
-
-- On this page
-- [Overview of supported tools](https://ai.google.dev/gemini-api/docs/live-tools#tools-overview)
-- [Function calling](https://ai.google.dev/gemini-api/docs/live-tools#function-calling)
-- [Asynchronous function calling](https://ai.google.dev/gemini-api/docs/live-tools#async-function-calling)
-- [Code execution](https://ai.google.dev/gemini-api/docs/live-tools#code-execution)
-- [Grounding with Google Search](https://ai.google.dev/gemini-api/docs/live-tools#google-search)
-- [Combining multiple tools](https://ai.google.dev/gemini-api/docs/live-tools#combine-tools)
-- [What's next](https://ai.google.dev/gemini-api/docs/live-tools#whats-next)
 
 Tool use allows Live API to go beyond just conversation by enabling it to
 perform actions in the real-world and pull in external context while maintaining
 a real time connection.
 You can define tools such as [Function calling](https://ai.google.dev/gemini-api/docs/function-calling),
 [Code execution](https://ai.google.dev/gemini-api/docs/code-execution), and [Google Search](https://ai.google.dev/gemini-api/docs/grounding) with the Live API.
-
-## Overview of supported tools
-
-Here's a brief overview of the available tools for each model:
-
-| Tool                 | Cascaded models<br>`gemini-live-2.5-flash-preview`<br>`gemini-2.0-flash-live-001` | `gemini-2.5-flash-preview-native-audio-dialog` | `gemini-2.5-flash-exp-native-audio-thinking-dialog` |
-| -------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------- | --------------------------------------------------- |
-| **Search**           | Yes                                                                               | Yes                                            | Yes                                                 |
-| **Function calling** | Yes                                                                               | Yes                                            | No                                                  |
-| **Code execution**   | Yes                                                                               | No                                             | No                                                  |
-| **Url context**      | Yes                                                                               | No                                             | No                                                  |
 
 ## Function calling
 
@@ -46,17 +16,14 @@ You can define function declarations as part of the session configuration.
 After receiving tool calls, the client should respond with a list of
 `FunctionResponse` objects using the `session.send_tool_response` method.
 
-See the [Function calling tutorial](https://ai.google.dev/gemini-api/docs/function-calling) to learn
-more.
-
-[Python](https://ai.google.dev/gemini-api/docs/live-tools#python)[JavaScript](https://ai.google.dev/gemini-api/docs/live-tools#javascript)More
+### Python
 
 ```
 import asyncio
 from google import genai
 from google.genai import types
 
-client = genai.Client(api_key="GEMINI_API_KEY")
+client = genai.Client()
 model = "gemini-live-2.5-flash-preview"
 
 # Simple function definitions
@@ -92,10 +59,12 @@ if __name__ == "__main__":
 
 ```
 
+### JavaScript
+
 ```
 import { GoogleGenAI, Modality } from '@google/genai';
 
-const ai = new GoogleGenAI({ apiKey: "GOOGLE_API_KEY" });
+const ai = new GoogleGenAI({});
 const model = 'gemini-live-2.5-flash-preview';
 
 // Simple function definitions
@@ -212,9 +181,7 @@ main();
 
 ```
 
-From a single prompt, the model can generate multiple function calls and the
-code necessary to chain their outputs. This code executes in a sandbox
-environment, generating subsequent [BidiGenerateContentToolCall](https://ai.google.dev/api/live#bidigeneratecontenttoolcall) messages.
+From a single prompt, the model can generate multiple function calls and the code necessary to chain their outputs. This code executes in a sandbox environment, generating subsequent [BidiGenerateContentToolCall](https://ai.google.dev/api/live#bidigeneratecontenttoolcall) messages.
 
 ## Asynchronous function calling
 
@@ -227,7 +194,7 @@ If you don't want to block the conversation, you can tell the model to run the
 functions asynchronously. To do so, you first need to add a `behavior` to the
 function definitions:
 
-[Python](https://ai.google.dev/gemini-api/docs/live-tools#python)[JavaScript](https://ai.google.dev/gemini-api/docs/live-tools#javascript)More
+### Python
 
 ```
   # Non-blocking function definitions
@@ -235,6 +202,8 @@ function definitions:
   turn_off_the_lights = {"name": "turn_off_the_lights"} # turn_off_the_lights will still pause all interactions with the model
 
 ```
+
+### JavaScript
 
 ```
 import { GoogleGenAI, Modality, Behavior } from '@google/genai';
@@ -262,7 +231,7 @@ Then you need to tell the model how to behave when it receives the
 - Or do nothing and use that knowledge later on in the discussion
   ( `scheduling="SILENT"`)
 
-[Python](https://ai.google.dev/gemini-api/docs/live-tools#python)[JavaScript](https://ai.google.dev/gemini-api/docs/live-tools#javascript)More
+### Python
 
 ```
 # for a non-blocking function definition, apply scheduling in the function response:
@@ -276,6 +245,8 @@ Then you need to tell the model how to behave when it receives the
   )
 
 ```
+
+### JavaScript
 
 ```
 import { GoogleGenAI, Modality, Behavior, FunctionResponseScheduling } from '@google/genai';
@@ -298,14 +269,14 @@ You can define code execution as part of the session configuration.
 This lets the Live API generate and execute Python code and dynamically
 perform computations to benefit your results. See the [Code execution tutorial](https://ai.google.dev/gemini-api/docs/code-execution) to learn more.
 
-[Python](https://ai.google.dev/gemini-api/docs/live-tools#python)[JavaScript](https://ai.google.dev/gemini-api/docs/live-tools#javascript)More
+### Python
 
 ```
 import asyncio
 from google import genai
 from google.genai import types
 
-client = genai.Client(api_key="GEMINI_API_KEY")
+client = genai.Client()
 model = "gemini-live-2.5-flash-preview"
 
 tools = [{'code_execution': {}}]
@@ -335,10 +306,12 @@ if __name__ == "__main__":
 
 ```
 
+### JavaScript
+
 ```
 import { GoogleGenAI, Modality } from '@google/genai';
 
-const ai = new GoogleGenAI({ apiKey: "GOOGLE_API_KEY" });
+const ai = new GoogleGenAI({});
 const model = 'gemini-live-2.5-flash-preview';
 
 const tools = [{codeExecution: {}}]
@@ -437,14 +410,14 @@ configuration. This increases the Live API's accuracy and prevents
 hallucinations. See the [Grounding tutorial](https://ai.google.dev/gemini-api/docs/grounding) to
 learn more.
 
-[Python](https://ai.google.dev/gemini-api/docs/live-tools#python)[JavaScript](https://ai.google.dev/gemini-api/docs/live-tools#javascript)More
+### Python
 
 ```
 import asyncio
 from google import genai
 from google.genai import types
 
-client = genai.Client(api_key="GEMINI_API_KEY")
+client = genai.Client()
 model = "gemini-live-2.5-flash-preview"
 
 tools = [{'google_search': {}}]
@@ -475,10 +448,12 @@ if __name__ == "__main__":
 
 ```
 
+### JavaScript
+
 ```
 import { GoogleGenAI, Modality } from '@google/genai';
 
-const ai = new GoogleGenAI({ apiKey: "GOOGLE_API_KEY" });
+const ai = new GoogleGenAI({});
 const model = 'gemini-live-2.5-flash-preview';
 
 const tools = [{googleSearch: {}}]
@@ -575,7 +550,7 @@ main();
 You can combine multiple tools within the Live API,
 increasing your application's capabilities even more:
 
-[Python](https://ai.google.dev/gemini-api/docs/live-tools#python)[JavaScript](https://ai.google.dev/gemini-api/docs/live-tools#javascript)More
+### Python
 
 ```
 prompt = """
@@ -599,6 +574,8 @@ config = {"response_modalities": ["TEXT"], "tools": tools}
 # ... remaining model call
 
 ```
+
+### JavaScript
 
 ```
 const prompt = `Hey, I need you to do three things for me.
@@ -628,6 +605,6 @@ const config = {
 ## What's next
 
 - Check out more examples of using tools with the Live API in the
-  [Tool use cookbook](https://github.com/google-gemini/cookbook/blob/main/quickstarts/Get_started_LiveAPI_tools.ipynb).
-- Get the full story on features and configurations from the
-  [Live API Capabilities guide](https://ai.google.dev/gemini-api/docs/live-guide).
+  [Tool use cookbook](https://colab.research.google.com/github/google-gemini/cookbook/blob/main/quickstarts/Get_started_LiveAPI_tools.ipynb).
+
+Last updated 2025-07-08 UTC.
