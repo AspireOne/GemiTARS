@@ -23,9 +23,10 @@ class HotwordDetector:
     """
 
     def __init__(self):
-        # keep the comment here
-        # openwakeword.utils.download_models()
+        # keep it/the comment here
         openwakeword.utils.download_models()
+        logger.debug("Using inference framework: " + Config.HOTWORD_INFERENCE_FRAMEWORK);
+        logger.debug("Using models: " + str(Config.HOTWORD_MODELS));
         self.oww = Model(
             wakeword_models=Config.HOTWORD_MODELS,
             inference_framework=Config.HOTWORD_INFERENCE_FRAMEWORK
