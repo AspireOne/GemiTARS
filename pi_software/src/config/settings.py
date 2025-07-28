@@ -14,8 +14,8 @@ class Config:
 
     # Audio Settings (must match server)
     AUDIO_SAMPLE_RATE = 16000
-    # TODO: Alter? no? yes?
-    AUDIO_BLOCK_SIZE = 1600  # 100ms of audio
+    # IMPACTS LATENCY! Ideally multiples of 80ms - '1280' for 80ms or '2560' for 160ms (can go even lower if needed for performace)
+    AUDIO_BLOCK_SIZE = 2560  # 100ms of audio 
     AUDIO_DTYPE = 'int16'
     AUDIO_CHANNELS = 1
     AUDIO_MIME_TYPE = "audio/pcm;rate=16000"
@@ -27,7 +27,7 @@ class Config:
 
     # Omit "alexa" for now - needs to somehow be downloaded to the openwakeword cache.
     HOTWORD_MODELS = [hey_tars_path, tars_path]
-    HOTWORD_THRESHOLD = 0.1 # OpenWakeWord's default is 0.5. Will need to be adjusted with the specific esp32 mic.
+    HOTWORD_THRESHOLD = 0.1 # OpenWakeWord's default is 0.5. Will need to be adjusted with the specific raspberry pi mic.
     HOTWORD_BUFFER_SECONDS = 1.4 # How long does it take to say? + buffer
     HOTWORD_REDETECTION_TIMEOUT_SECONDS = 2
     HOTWORD_DEBUG_LOGGING = True  # Enable detailed confidence logging for debugging
