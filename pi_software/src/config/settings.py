@@ -37,11 +37,15 @@ class Config:
     AUDIO_DTYPE = 'int16'
     AUDIO_CHANNELS = 1
     AUDIO_MIME_TYPE = "audio/pcm;rate=16000"
+    AUDIO_PLAYBACK_QUEUE_SIZE = int(os.getenv('AUDIO_PLAYBACK_QUEUE_SIZE', '50')) # Chunks of audio to buffer for playback
 
     # Server Connection
     SERVER_HOST = os.getenv('SERVER_HOST', 'localhost')
     SERVER_PORT = int(os.getenv('SERVER_PORT', '7456'))
     SERVER_URL = f"ws://{SERVER_HOST}:{SERVER_PORT}"
+
+    # Audio Manager
+    ENVIRONMENT = os.getenv('ENVIRONMENT', 'pc').lower()
 
     # Hotword Detection
     HOTWORD_INFERENCE_FRAMEWORK = _inference_framework

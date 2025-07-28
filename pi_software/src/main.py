@@ -4,13 +4,24 @@ Main entry point for GemiTARS Pi Client
 
 import asyncio
 from .core.state_machine import StateMachine
-from .audio.pc_audio_manager import PcAudioManager
 from .core.hotword_detector import HotwordDetector
 from .services.websocket_client import PersistentWebSocketClient
 from .services.session_manager import SessionManager
 from .utils.logger import setup_logger
+from .config.settings import Config
 
 logger = setup_logger(__name__)
+
+def get_audio_manager():
+    """Factory function to get the appropriate audio manager."""
+    if Config.ENVIRONMENT == 'pi':
+        from .audio.pi_audio_manager import PiAudioManager
+        logger.info("Using Pi Audio Manager")
+        return PiAudioManager()
+    # Default to PC audio manager
+    from .audio.pc_audio_manager import PcAudioManager
+    logger.info("Using PC Audio Manager")
+    return PcAudioManager()
 
 async def main():
     """Main application entry point."""
@@ -18,7 +29,7 @@ async def main():
     
     # Initialize components
     state_machine = StateMachine()
-    audio_manager = PcAudioManager()
+    audio_manager = get_audio_manager()
     hotword_detector = HotwordDetector()
     websocket_client = PersistentWebSocketClient()
     
