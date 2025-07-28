@@ -78,7 +78,8 @@ class PcAudioManager(AudioInterface):
         if status:
             logger.warning(f"Microphone stream status: {status}")
         if self.audio_callback:
-            self.audio_callback(indata)
+            # Flatten the audio array to ensure it's a 1D array, as expected by openwakeword
+            self.audio_callback(indata.flatten())
 
     async def stop_recording(self) -> None:
         """Stops the microphone stream."""
