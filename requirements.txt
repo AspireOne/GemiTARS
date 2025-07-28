@@ -8,3 +8,4 @@ google-genai
 requests
 colorlog
 websockets
+yeelight
