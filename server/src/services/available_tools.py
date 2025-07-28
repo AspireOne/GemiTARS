@@ -6,7 +6,9 @@ FunctionDeclarations (for the API) and their corresponding Python implementation
 """
 
 import random
+from typing import Optional, Tuple
 from google.genai import types
+from yeelight import Bulb
 
 # ------------------------------------------------------------------------------
 # Tool Implementations
@@ -49,6 +51,59 @@ def tell_a_joke(topic: str = "general") -> dict:
     joke_list = jokes.get(topic.lower(), jokes["general"])
     return {"joke": random.choice(joke_list)}
 
+
+def control_light(
+    power: Optional[bool] = None,
+    brightness: Optional[int] = None,
+    rgb: Optional[Tuple[int, int, int]] = None,
+    color_temp: Optional[int] = None,
+) -> dict:
+    """
+    Controls a Yeelight smart light bulb.
+
+    Args:
+        power: Turn the light on (True) or off (False).
+        brightness: Set the brightness from 1 to 100.
+        rgb: Set the color using a tuple of RGB values (e.g., (255, 0, 0)).
+        color_temp: Set the color temperature in Kelvin (1700-6500).
+
+    Returns:
+        A dictionary confirming the actions taken.
+    """
+    try:
+        bulb = Bulb("192.168.0.171")
+        actions_performed = []
+
+        if power is not None:
+            if power:
+                bulb.turn_on()
+                actions_performed.append("Turned light on")
+            else:
+                bulb.turn_off()
+                actions_performed.append("Turned light off")
+
+        if brightness is not None:
+            bulb.set_brightness(brightness)
+            actions_performed.append(f"Set brightness to {brightness}%")
+
+        if rgb is not None:
+            r, g, b = rgb
+            bulb.set_rgb(r, g, b)
+            actions_performed.append(f"Set color to RGB({r}, {g}, {b})")
+
+        if color_temp is not None:
+            bulb.set_color_temp(color_temp)
+            actions_performed.append(f"Set color temperature to {color_temp}K")
+
+        if not actions_performed:
+            return {"status": "No action taken. Please provide a parameter."}
+
+        return {"status": "success", "actions": ", ".join(actions_performed)}
+
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
 # ------------------------------------------------------------------------------
 # Tool Definitions and Registry
 # ------------------------------------------------------------------------------
@@ -68,15 +123,45 @@ tell_a_joke_declaration = types.FunctionDeclaration(
     )
 )
 
+control_light_declaration = types.FunctionDeclaration(
+    name="control_light",
+    description="Controls a Yeelight smart light bulb. You can turn it on or off, adjust brightness, set color (RGB), or color temperature (Kelvin).",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "power": types.Schema(
+                type=types.Type.BOOLEAN,
+                description="Turn the light on (true) or off (false)."
+            ),
+            "brightness": types.Schema(
+                type=types.Type.INTEGER,
+                description="Brightness level (1-100)."
+            ),
+            "rgb": types.Schema(
+                type=types.Type.ARRAY,
+                items=types.Schema(type=types.Type.INTEGER),
+                description="An array of three integers representing RGB values (e.g., [255, 0, 0])."
+            ),
+            "color_temp": types.Schema(
+                type=types.Type.INTEGER,
+                description="Color temperature in Kelvin (1700-6500)."
+            ),
+        },
+        required=[],
+    ),
+)
+
 # --- Tool Registry ---
 # A mapping of tool names to their actual Python function implementations.
 # This allows the GeminiService to dynamically call the correct function.
 available_tools = {
     "tell_a_joke": tell_a_joke,
+    "control_light": control_light,
 }
 
 # --- Tool Schemas ---
 # A list of all function declarations to be sent to the Gemini API.
 tool_schemas = [
     tell_a_joke_declaration,
+    control_light_declaration,
 ]

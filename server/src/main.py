@@ -233,7 +233,7 @@ class TARSAssistant:
         try:
             async for response in self.gemini_service.receive_responses():
                 # Log the raw response for debugging tool usage
-                logger.debug(f"RAW GEMINI RESPONSE: {response.raw_response}")
+                # logger.debug(f"RAW GEMINI RESPONSE: {response.raw_response}")
 
                 if response.text:
                     full_response, is_processing = self._handle_gemini_text_chunk(
