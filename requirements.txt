@@ -1,10 +1,10 @@
-google-genai
-python-dotenv
-sounddevice
 numpy
-requests
+openwakeword
 elevenlabs
 elevenlabs[pyaudio]
+sounddevice
+python-dotenv
+google-genai
+requests
 colorlog
-openwakeword
 websockets
