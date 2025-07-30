@@ -6,6 +6,8 @@
 
 ## 🛠️ Core Tasks
 
+**Pi:**
+
 - [ ] 🟠 Explore whether to replace `googlevoicehat-soundcard` overlay with `max98357a` and `i2s-mems-mic`, to potentially support 16kHz 16-bit natively.
 - [ ] 🟠 Fix popping sound on PI 2 W microphone + fix auto-starting aplay service (installed by Adafruit, tries to always play silence to fix the popping).
 - [ ] 🟠 Make sure the Pi client is using the ALSA-created mic_mono and speaker_mono devices (make sure they are set as 'default')
@@ -14,6 +16,7 @@
 - [ ] 🟠 Review, improve I2S mic/speaker code on the Pi client.
 - [ ] 🟠 Actually test mic/speaker reliability, audio clarity, and latency (add latency logging to every step possible)
 - [ ] 🟠 Calibrate hotword sensitivity and parameters for INMP441 mic specifically.
+- [ ] 🟠 Check CPU/mem usage (from another terminal) during hotword detection, and possibly decrease AUDIO_BLOCK_SIZE?
 
 ---
 
