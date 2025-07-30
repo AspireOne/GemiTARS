@@ -8,27 +8,20 @@
 
 **Pi:**
 
-- [ ] 🟠 Explore whether to replace `googlevoicehat-soundcard` overlay with `max98357a` and `i2s-mems-mic`, to potentially support 16kHz 16-bit natively.
 - [ ] 🟠 Fix popping sound on PI 2 W microphone + fix auto-starting aplay service (installed by Adafruit, tries to always play silence to fix the popping). (https://claude.ai/chat/1212c816-140e-4e45-a94e-b5cf1bcfb1ed)
-- [ ] 🟠 Make sure the Pi client is using the ALSA-created mic_mono and speaker_mono devices (make sure they are set as 'default')
-- [ ] 🟠 Test the sound quality difference in 16khz 16-bit vs native 48khz 32-bit (full example of the commands in docs/hardware_configuration.md - "Optimized ALSA Configuration")
-- [ ] 🟠 Optimize audio playing on the Pi client (stability/reliability/robustness, performance, configuration with the speaker... Currently it seems to stutter and the TTS audio buffer (audio sent from server) is being exceeded)
-- [ ] 🟠 Review, improve I2S mic/speaker code on the Pi client.
-- [ ] 🟠 Actually test mic/speaker reliability, audio clarity, and latency (add latency logging to every step possible)
-- [ ] 🟠 Calibrate hotword sensitivity and parameters for INMP441 mic specifically.
-- [ ] 🟠 Check CPU/mem usage (from another terminal) during hotword detection, and possibly decrease AUDIO_BLOCK_SIZE?
+- [ ] 🟠 Check CPU/mem usage (from another terminal) during hotword detection?
 
 ---
 
 - [ ] 🔴 Play local acknowledgment sound (e.g., “mhm”, “listening...”) after hotword detection.
 - [ ] 🔴 Play sound before TARS replies, like "Mmmm..." to make it seem more snappy? (maybe)
-
-- [ ] 🟠 Retrain ElevenLabs voice.
   - Use voice samples from the current model to reduce pitch inconsistency.
 - [ ] 🟠 Refactor session & state management (maybe?)
   - Reduce complexity and avoid server/client state desync.
   - Possibly merge passive/listening/processing/active phases.
 - [ ] 🟡 Handle interruptions and echo/feedback cancellation (?).
+- [ ] 🟡 Retrain ElevenLabs voice.
+- [ ] 🟡 Add physical button to turn on the conversation (adjust code to allow it)
 - [ ] 🟡 Dynamic configuration of system settings (e.g., timeout) via voice.
 - [ ] 🟢 Dynamic user preferences
   - Humor/personality settings, memory of prior choices.
@@ -67,3 +60,10 @@
 - [x] 🔴 on RPI 2 W, USE .tflite (ARM) instead of .onnx!! More performant, but Windows (and my laptop) don't support it.
 - [x] 🔴 Move relevant settings from config file to .env file.
 - [x] 🔴 Implement actual I2S mic/speaker code on the Pi client.
+- [x] 🟠 Explore whether to replace `googlevoicehat-soundcard` overlay with `max98357a` and `i2s-mems-mic`, to potentially support 16kHz 16-bit natively.
+- [x] 🟠 Make sure the Pi client is using the ALSA-created mic_mono and speaker_mono devices (make sure they are set as 'default')
+- [x] 🟠 Test the sound quality difference in 16khz 16-bit vs native 48khz 32-bit (full example of the commands in docs/hardware_configuration.md - "Optimized ALSA Configuration")
+- [x] 🟠 Optimize audio playing on the Pi client (stability/reliability/robustness, performance, configuration with the speaker... Currently it seems to stutter and the TTS audio buffer (audio sent from server) is being exceeded)
+- [x] 🟠 Review, improve I2S mic/speaker code on the Pi client.
+- [x] 🟠 Actually test mic/speaker reliability, audio clarity, and latency (add latency logging to every step possible)
+- [x] 🟠 Calibrate hotword sensitivity and parameters for INMP441 mic specifically.
