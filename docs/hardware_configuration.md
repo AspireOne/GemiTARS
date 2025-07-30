@@ -176,13 +176,12 @@ pcm.mic_mono {
         channels 2
     }
     ttable {
-        0.0 0.5  # Left channel to mono
-        0.1 0.5  # Right channel to mono
+        0.0 0.1  # Left channel to mono
+        0.1 0.1  # Right channel to mono
     }
 }
 
-# Optimized mono speaker output
-pcm.speaker_mono {
+pcm.mic_boosted {
     type plug
     slave {
         pcm "hw_card"
@@ -191,15 +190,27 @@ pcm.speaker_mono {
         channels 2
     }
     ttable {
-        0.0 1.0  # Mono to left channel
-        0.1 1.0  # Mono to right channel
+        0.0 2.0
+        0.1 2.0
     }
+}
+
+# Speaker output - let hardware handle stereo mixing
+pcm.speaker {
+    type plug
+    slave {
+        pcm "hw_card"
+        format S32_LE
+        rate 48000
+        channels 2
+    }
+    # No ttable - pass stereo through to MAX98357A for hardware mixing
 }
 
 # Default devices
 pcm.!default {
     type asym
-    playback.pcm "speaker_mono"
+    playback.pcm "speaker"
     capture.pcm "mic_mono"
 }
 ```
