@@ -134,9 +134,15 @@ class PiAudioManager(AudioInterface):
             logger.info("Audio output stream started.")
             
             while True:
-                audio_chunk = await self.playback_queue.get()
-                self.output_stream.write(audio_chunk)
-                self.playback_queue.task_done()
+                try:
+                    # Wait for an audio chunk with a timeout
+                    audio_chunk = await asyncio.wait_for(self.playback_queue.get(), timeout=0.1)
+                    self.output_stream.write(audio_chunk)
+                    self.playback_queue.task_done()
+                except asyncio.TimeoutError:
+                    # No audio received for a while, assume playback is done
+                    logger.info("Playback handler timed out. Closing stream.")
+                    break
 
         except asyncio.CancelledError:
             logger.info("Playback handler cancelled.")
@@ -150,8 +156,16 @@ class PiAudioManager(AudioInterface):
                 logger.info("Audio output stream closed.")
 
     async def wait_for_playback_completion(self) -> None:
-        """Waits until all queued audio chunks have been played."""
+        """Waits until all queued audio chunks have been played and the playback task is complete."""
+        # First, wait for the queue to be fully processed by the handler.
         await self.playback_queue.join()
+        
+        # Then, wait for the playback handler task to complete its lifecycle.
+        # The handler will exit automatically after a timeout, ensuring the stream is closed.
+        if self.playback_task:
+            logger.debug("Playback queue empty. Waiting for playback task to complete...")
+            await self.playback_task
+            logger.debug("Playback task completed.")
 
     async def check_audio_health(self) -> bool:
         """Check if audio devices are healthy and available."""
