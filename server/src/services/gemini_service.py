@@ -65,6 +65,8 @@ class GeminiService:
     - Response processing
     - Configuration
     """
+    SLIDING_WINDOW_TOKENS_TRIGGER = 32000
+    TEMPERATURE = 0.85
     
     def __init__(self, model: str = Config.DEFAULT_MODEL,
                  system_prompt: Optional[str] = None):
@@ -90,6 +92,10 @@ class GeminiService:
         self.config: types.LiveConnectConfig = types.LiveConnectConfig(
             response_modalities=[types.Modality.TEXT],
             tools=tool_schemas,
+            context_window_compression=types.ContextWindowCompressionConfig(
+                sliding_window=types.SlidingWindow(),
+                trigger_tokens=GeminiService.SLIDING_WINDOW_TOKENS_TRIGGER,
+            ),
             input_audio_transcription=types.AudioTranscriptionConfig(),
             realtime_input_config=types.RealtimeInputConfig(
                 activity_handling=types.ActivityHandling.NO_INTERRUPTION,
@@ -101,7 +107,7 @@ class GeminiService:
                 )
             ),
             generation_config=types.GenerationConfig(
-                temperature=0.85
+                temperature=GeminiService.TEMPERATURE
             ),
         )
 
