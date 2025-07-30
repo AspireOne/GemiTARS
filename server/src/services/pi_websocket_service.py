@@ -124,9 +124,6 @@ class PiWebsocketService(PiInterfaceService):
                 audio_chunk = await self.playback_queue.get()
                 await self.client.send(audio_chunk)
                 self.playback_queue.task_done()
-                # If the queue is now empty, set the event
-                if self.playback_queue.empty():
-                    self.playback_complete_event.set()
             except ConnectionClosed:
                 logger.warning("Playback handler failed: Connection closed.")
                 break
@@ -147,15 +144,16 @@ class PiWebsocketService(PiInterfaceService):
 
     async def play_audio_chunk(self, audio_data: bytes) -> None:
         if self.client:
-            # Reset the event whenever we add a new chunk
-            self.playback_complete_event.clear()
             await self.playback_queue.put(audio_data)
 
     async def wait_for_playback_completion(self) -> None:
         if self.client:
             logger.debug("Waiting for playback completion signal...")
             await self.playback_complete_event.wait()
-            logger.debug("Playback completion signal received.")
+
+    async def clear_playback_event(self) -> None:
+        """Clear the playback complete event."""
+        self.playback_complete_event.clear()
 
     def is_client_connected(self) -> bool:
         return self.client is not None

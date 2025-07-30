@@ -55,8 +55,15 @@ class PiInterfaceService(ABC):
     @abstractmethod
     async def wait_for_playback_completion(self) -> None:
         """
-        Wait until all queued audio chunks have been sent to the client and 
+        Wait until all queued audio chunks have been sent to the client and
         are likely played.
+        """
+        pass
+
+    @abstractmethod
+    async def clear_playback_event(self) -> None:
+        """
+        Explicitly clear the playback completion event to ensure a clean state.
         """
         pass
 

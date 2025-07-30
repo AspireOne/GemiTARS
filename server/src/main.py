@@ -301,12 +301,15 @@ class TARSAssistant:
             # 1. Transition from PROCESSING to SPEAKING
             self.conversation_manager.transition_to(ConversationState.SPEAKING)
             
-            # 2. Signal to client that TTS streaming is about to start (to stop microphone)
+            # 2. Clear any stale playback completion events from previous turns
+            await self.pi_service.clear_playback_event()
+
+            # 3. Signal to client that TTS streaming is about to start (to stop microphone)
             await self.pi_service.send_control_message({"type": "start_of_tts_stream"})
             
             logger.info("Converting to speech and streaming...")
             
-            # 3. Stream TTS audio
+            # 4. Stream TTS audio
             chunk_count = 0
             async for audio_chunk in self.elevenlabs_service.stream_tts(text):
                 await self.pi_service.play_audio_chunk(audio_chunk)
