@@ -9,7 +9,7 @@
 **Pi:**
 
 - [ ] 🟠 Explore whether to replace `googlevoicehat-soundcard` overlay with `max98357a` and `i2s-mems-mic`, to potentially support 16kHz 16-bit natively.
-- [ ] 🟠 Fix popping sound on PI 2 W microphone + fix auto-starting aplay service (installed by Adafruit, tries to always play silence to fix the popping).
+- [ ] 🟠 Fix popping sound on PI 2 W microphone + fix auto-starting aplay service (installed by Adafruit, tries to always play silence to fix the popping). (https://claude.ai/chat/1212c816-140e-4e45-a94e-b5cf1bcfb1ed)
 - [ ] 🟠 Make sure the Pi client is using the ALSA-created mic_mono and speaker_mono devices (make sure they are set as 'default')
 - [ ] 🟠 Test the sound quality difference in 16khz 16-bit vs native 48khz 32-bit (full example of the commands in docs/hardware_configuration.md - "Optimized ALSA Configuration")
 - [ ] 🟠 Optimize audio playing on the Pi client (stability/reliability/robustness, performance, configuration with the speaker... Currently it seems to stutter and the TTS audio buffer (audio sent from server) is being exceeded)
