@@ -6,21 +6,25 @@
 
 ## 🛠️ Core Tasks
 
-- [ ] 🟡 Potentially use bidirectional WS in elevenlab? https://elevenlabs.io/docs/best-practices/latency-optimization#websockets
+- [ ] 🟠 Explore whether to replace `googlevoicehat-soundcard` overlay with `max98357a` and `i2s-mems-mic`, to potentially support 16kHz 16-bit natively.
+- [ ] 🟠 Fix popping sound on PI 2 W microphone + fix auto-starting aplay service (installed by Adafruit, tries to always play silence to fix the popping).
+- [ ] 🟠 Make sure the Pi client is using the ALSA-created mic_mono and speaker_mono devices (make sure they are set as 'default')
+- [ ] 🟠 Test the sound quality difference in 16khz 16-bit vs native 48khz 32-bit (full example of the commands in docs/hardware_configuration.md - "Optimized ALSA Configuration")
+- [ ] 🟠 Optimize audio playing on the Pi client (stability/reliability/robustness, performance, configuration with the speaker... Currently it seems to stutter and the TTS audio buffer (audio sent from server) is being exceeded)
+- [ ] 🟠 Review, improve I2S mic/speaker code on the Pi client.
+- [ ] 🟠 Actually test mic/speaker reliability, audio clarity, and latency (add latency logging to every step possible)
+- [ ] 🟠 Calibrate hotword sensitivity and parameters for INMP441 mic specifically.
+
+---
+
 - [ ] 🔴 Play local acknowledgment sound (e.g., “mhm”, “listening...”) after hotword detection.
 - [ ] 🔴 Play sound before TARS replies, like "Mmmm..." to make it seem more snappy? (maybe)
-- [ ] 🔴 on RPI 2 W, USE .tflite (ARM) instead of .onnx!! More performant, but Windows (and my laptop) don't support it.
-- [ ] 🔴 Move relevant settingss from config file to .env file.
-- [ ] 🔴 Implement actual I2S mic/speaker code on the Pi client.
-- [ ] 🟠 Test mic/speaker reliability, audio clarity, and latency.
+
 - [ ] 🟠 Retrain ElevenLabs voice.
   - Use voice samples from the current model to reduce pitch inconsistency.
 - [ ] 🟠 Refactor session & state management (maybe?)
   - Reduce complexity and avoid server/client state desync.
   - Possibly merge passive/listening/processing/active phases.
-- [ ] 🟡 Noise cancellation
-  - Implement software noise reduction (e.g., ONNX/OpenWakeWord).
-  - Calibrate for INMP441 mic specifically.
 - [ ] 🟡 Handle interruptions and echo/feedback cancellation (?).
 - [ ] 🟡 Dynamic configuration of system settings (e.g., timeout) via voice.
 - [ ] 🟢 Dynamic user preferences
@@ -37,7 +41,8 @@
 
 ## 🐛 Known Bugs
 
-- [ ] 🔴 'Audio playback finished' message sent prematurely from the PI if TTS audio long (> ~2 sentences).
+- [ ] 🔴 'Audio playback finished' message sent prematurely from the PI if TTS audio long (> ~2 sentences)!
+- [ ] 🟠 Fix popping sound on PI 2 W microphone + fix auto-starting aplay service (installed by Adafruit, tries to always play silence to fix the popping).
 
 ---
 
@@ -55,3 +60,7 @@
 
 - [x] 🔴 Maintain persistent WebSocket connection from Pi to server.
 - [x] 🟢 Convert `/server` and `/pi_software` both to modules.
+- [x] 🟡 Potentially use bidirectional WS in elevenlab? https://elevenlabs.io/docs/best-practices/latency-optimization#websockets
+- [x] 🔴 on RPI 2 W, USE .tflite (ARM) instead of .onnx!! More performant, but Windows (and my laptop) don't support it.
+- [x] 🔴 Move relevant settings from config file to .env file.
+- [x] 🔴 Implement actual I2S mic/speaker code on the Pi client.
