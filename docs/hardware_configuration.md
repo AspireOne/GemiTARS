@@ -5,7 +5,7 @@
 ### Microphone: INMP441
 
 - **Type**: I2S MEMS microphone
-- **Connection**: Shared I2S bus with speaker
+- **Connection**: Shared I2S bus with speaker. Only left channel is used (the right one - "L/R" pin - is tied to GND)
 
 ### Speaker: MAX98357A
 
@@ -18,36 +18,6 @@
 - **WS (INMP441) + LRC (MAX98357A)**: Shared word select line
 - **SD (INMP441)**: I2S data input to Pi
 - **DIN (MAX98357A)**: I2S data output from Pi
-
-### Aplay HW Parameters (aplay -D hw:0,0 --dump-hw-params /dev/zero):
-
-```
-Playing raw data '/dev/zero' : Unsigned 8 bit, Rate 8000 Hz, Mono
-
-HW Params of device "hw:0,0":
---------------------
-ACCESS:        MMAP_INTERLEAVED, RW_INTERLEAVED
-FORMAT:        S32_LE
-SUBFORMAT:     STD
-SAMPLE_BITS:   32
-FRAME_BITS:    64
-CHANNELS:      2
-RATE:          48000
-PERIOD_TIME:   (666 682667)
-PERIOD_SIZE:   [32 32768]
-PERIOD_BYTES:  [256 262144]
-PERIODS:       [2 2048]
-BUFFER_TIME:   (1333 1365334)
-BUFFER_SIZE:   [64 65536]
-BUFFER_BYTES:  [512 524288]
-TICK_TIME:     ALL
---------------------
-
-aplay: set_params:1352: Sample format not available
-
-Available formats:
-- S32_LE
-```
 
 ### Arecord HW Parameters (arecord -D hw:0,0 --dump-hw-params /dev/null):
 
@@ -80,14 +50,6 @@ Available formats:
 ```
 
 ## Software Configuration
-
-### ALSA Mixer Settings:
-
-```
-amixer -c 0 contents
-amixer -c 0 controls
-# (Output not included, likely too verbose or omitted)
-```
 
 ### Device Overlay Help (dtoverlay -h googlevoicehat-soundcard):
 
@@ -139,9 +101,9 @@ disable_splash=1
 
 ### Key Points
 
-- **Use ONLY `googlevoicehat-soundcard` overlay** - it handles both input and output
+- **Use ONLY `googlevoicehat-soundcard` overlay** - it handles both input and output (todo: test whether it's indeed fully compatible)
 - **Do NOT use `max98357a` overlay** when using googlevoicehat-soundcard
-- **Remove any `/etc/asound.conf`** files created by installation scripts
+- **Remove any `/etc/asound.conf`** files created by adafruit installation scripts
 
 ## Verification Commands
 
@@ -245,24 +207,20 @@ pcm.!default {
 Usage examples:
 
 ```
-# Record mono audio (auto-converts from hardware format)
-arecord -D default -f S16_LE -r 16000 -c 1 test.wav
+# Option 1: Direct hardware access (no conversion)
+arecord -D hw:0,0 -f S32_LE -r 48000 -c 2 recording.wav
+aplay -D hw:0,0 -f S32_LE -r 48000 -c 2 audio.wav
 
-# Play mono audio (auto-converts to hardware format)
-aplay -D default test.wav
+# Option 2: Convenient virtual devices (with conversion)
+arecord -D default -f S16_LE -r 16000 -c 1 recording.wav  # Uses mic_mono
+aplay -D default -f S16_LE -r 16000 -c 1 audio.wav       # Uses speaker_mono
 
-
-# Test microphone with optimized config
-arecord -D default -f S16_LE -r 16000 -c 1 -d 5 test.wav
-
-# Test speaker with optimized config
-aplay -D default test.wav
-
-# For direct hardware access (not recommended for apps):
-arecord -D hw:0,0 -f S32_LE -r 48000 -c 2 raw_recording.wav
+# Option 3: Specific virtual devices
+arecord -D mic_mono -f S16_LE -r 16000 -c 1 recording.wav
+aplay -D speaker_mono -f S16_LE -r 16000 -c 1 audio.wav
 ```
 
-## Performance Considerations
+**Performance Considerations**
 
 - **Native Hardware Format**: S32_LE stereo @48kHz
 - **Recommended App Format**: S16_LE mono @16kHz (voice) or 44.1kHz (music)
