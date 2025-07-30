@@ -57,3 +57,6 @@ class Config:
     HOTWORD_BUFFER_SECONDS = 1.4  # How long does it take to say? + buffer | TODO: Revise
     HOTWORD_REDETECTION_TIMEOUT_SECONDS = 2  # Timeout to prevent immediate re-detection
     HOTWORD_DEBUG_LOGGING = _get_bool_env('HOTWORD_DEBUG_LOGGING', False)  # Enable detailed confidence logging for debugging
+    
+    # Acknowledgement Audio Files
+    ACKNOWLEDGEMENT_AUDIO_FILES = ['talk_to_me.raw', 'huh.raw', 'yes.raw'] 

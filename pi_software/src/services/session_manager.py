@@ -3,12 +3,16 @@ Session Manager for GemiTARS Client with Persistent Connection
 """
 
 import asyncio
+import random
 from typing import Optional
+
+from pi_software.src.config.settings import Config
 
 from ..core.state_machine import StateMachine, ClientState
 from ..audio.audio_interface import AudioInterface
 from ..core.hotword_detector import HotwordDetector
 from .websocket_client import PersistentWebSocketClient, ConnectionStatus
+from .local_sound_manager import LocalSoundManager
 from ..utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -24,12 +28,14 @@ class SessionManager:
         audio_manager: AudioInterface,
         hotword_detector: HotwordDetector,
         websocket_client: PersistentWebSocketClient,
+        local_sound_manager: LocalSoundManager,
         loop: asyncio.AbstractEventLoop
     ):
         self.state_machine = state_machine
         self.audio_manager = audio_manager
         self.hotword_detector = hotword_detector
         self.websocket_client = websocket_client
+        self.local_sound_manager = local_sound_manager
         self.loop = loop
         
         # Audio state tracking: "stopped", "hotword", "session"
@@ -89,6 +95,27 @@ class SessionManager:
         # The start_session method will handle the state transition
         future = asyncio.run_coroutine_threadsafe(self.start_session(), self.loop)
         future.add_done_callback(self._handle_session_start_result)
+        self._play_acknowledgement_sound()
+        
+    def _play_acknowledgement_sound(self):
+        """Play an acknowledgement sound when hotword is detected."""
+        try:
+            # For now, hardcode to play 'huh' - Later you can add logic to choose different sounds
+            ack_sound_name = random.choice(Config.ACKNOWLEDGEMENT_AUDIO_FILES)
+            sound_data = self.local_sound_manager.get_sound(ack_sound_name)
+            
+            if sound_data:
+                # Use the existing audio playback infrastructure
+                asyncio.run_coroutine_threadsafe(
+                    self.audio_manager.play_audio_chunk(sound_data),
+                    self.loop
+                )
+                logger.info("Playing acknowledgement sound: " + ack_sound_name)
+            else:
+                logger.warning(f"Acknowledgement sound '{ack_sound_name}' not found")
+                
+        except Exception as e:
+            logger.error(f"Error playing acknowledgement sound: {e}")
 
     def _handle_session_start_result(self, future):
         """Handle the result of session start attempts."""

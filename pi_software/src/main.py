@@ -7,6 +7,7 @@ from .core.state_machine import StateMachine
 from .core.hotword_detector import HotwordDetector
 from .services.websocket_client import PersistentWebSocketClient
 from .services.session_manager import SessionManager
+from .services.local_sound_manager import LocalSoundManager
 from .utils.logger import setup_logger
 from .config.settings import Config
 
@@ -36,6 +37,12 @@ async def main():
         logger.error("Failed to initialize audio manager. Exiting.")
         return
         
+    # Initialize local sound manager
+    local_sound_manager = LocalSoundManager()
+    if not await local_sound_manager.initialize():
+        logger.error("Failed to initialize local sound manager. Exiting.")
+        return
+        
     hotword_detector = HotwordDetector()
     websocket_client = PersistentWebSocketClient()
     
@@ -48,6 +55,7 @@ async def main():
         audio_manager=audio_manager,
         hotword_detector=hotword_detector,
         websocket_client=websocket_client,
+        local_sound_manager=local_sound_manager,
         loop=loop
     )
     
