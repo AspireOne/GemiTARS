@@ -46,6 +46,8 @@ class Config:
 
     # Audio Manager
     ENVIRONMENT = os.getenv('ENVIRONMENT', 'pc').lower()
+    ALSA_INPUT_DEVICE = os.getenv('ALSA_INPUT_DEVICE', 'default')
+    ALSA_OUTPUT_DEVICE = os.getenv('ALSA_OUTPUT_DEVICE', 'default')
 
     # Hotword Detection
     HOTWORD_INFERENCE_FRAMEWORK = _inference_framework

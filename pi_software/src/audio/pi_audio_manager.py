@@ -25,30 +25,35 @@ class PiAudioManager(AudioInterface):
         self.audio_callback: Optional[Callable[[np.ndarray], Any]] = None
         self.playback_queue: asyncio.Queue = asyncio.Queue(maxsize=Config.AUDIO_PLAYBACK_QUEUE_SIZE)
         self.playback_task: Optional[asyncio.Task] = None
+        self.input_device_index: Optional[int] = None
+        self.output_device_index: Optional[int] = None
+
+    def _get_device_index_by_name(self, device_name: str) -> Optional[int]:
+        """Finds a PyAudio device index by its name."""
+        if not self.pyaudio_instance:
+            return None
+        for i in range(self.pyaudio_instance.get_device_count()):
+            try:
+                device_info = self.pyaudio_instance.get_device_info_by_index(i)
+                device_name_str = str(device_info.get('name', ''))
+                if device_name.lower() in device_name_str.lower():
+                    logger.info(f"Found device '{device_name}' at index {i}.")
+                    return i
+            except IOError as e:
+                logger.warning(f"Could not query device at index {i}: {e}")
+        logger.error(f"Audio device '{device_name}' not found.")
+        return None
 
     async def initialize(self) -> bool:
-        """Initializes PyAudio and checks for available audio devices."""
+        """Initializes PyAudio and finds the specified input and output devices."""
         try:
             self.pyaudio_instance = pyaudio.PyAudio()
             
-            # Check for at least one input and one output device
-            info = self.pyaudio_instance.get_host_api_info_by_index(0)
-            num_devices = info.get('deviceCount', 0)
-            if not isinstance(num_devices, int) or num_devices == 0:
-                logger.error("No audio devices found or device count is invalid.")
-                return False
+            self.input_device_index = self._get_device_index_by_name(Config.ALSA_INPUT_DEVICE)
+            self.output_device_index = self._get_device_index_by_name(Config.ALSA_OUTPUT_DEVICE)
 
-            has_input = False
-            has_output = False
-            for i in range(num_devices):
-                device_info = self.pyaudio_instance.get_device_info_by_host_api_device_index(0, i)
-                if int(device_info.get('maxInputChannels', 0)) > 0:
-                    has_input = True
-                if int(device_info.get('maxOutputChannels', 0)) > 0:
-                    has_output = True
-            
-            if not has_input or not has_output:
-                logger.error(f"Missing audio capability. Input: {has_input}, Output: {has_output}")
+            if self.input_device_index is None or self.output_device_index is None:
+                logger.error("Failed to find required audio devices. Check ALSA configuration and device names.")
                 return False
 
             logger.info("Pi audio manager initialized successfully.")
@@ -82,7 +87,8 @@ class PiAudioManager(AudioInterface):
                 rate=Config.AUDIO_SAMPLE_RATE,
                 input=True,
                 frames_per_buffer=Config.AUDIO_BLOCK_SIZE,
-                stream_callback=stream_callback
+                stream_callback=stream_callback,
+                input_device_index=self.input_device_index
             )
             self.input_stream.start_stream()
             logger.info("Microphone stream started successfully.")
@@ -122,7 +128,8 @@ class PiAudioManager(AudioInterface):
                 format=pyaudio.paInt16,
                 channels=Config.AUDIO_CHANNELS,
                 rate=Config.AUDIO_SAMPLE_RATE,
-                output=True
+                output=True,
+                output_device_index=self.output_device_index
             )
             logger.info("Audio output stream started.")
             
