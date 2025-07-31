@@ -294,9 +294,8 @@ class TARSAssistant:
         current_transcription += response.transcription_text
         
         sanitized_transcript = self._sanitize_transcript_for_keyword_matching(current_transcription)
-        logger.debug(f"full transcript: '{current_transcription}'")
         logger.debug(f"sanitized transcript: '{sanitized_transcript}'")
-        if any(phrase in sanitized_transcript for phrase in Config.SESSION_END_PHRASES):
+        if sanitized_transcript in Config.SESSION_END_PHRASES:
             logger.info(f"Session ending phrase detected. Ending session.")
             asyncio.create_task(self._end_session_by_keyword())
             return "" # Return empty string to stop further processing
