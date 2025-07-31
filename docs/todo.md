@@ -13,6 +13,23 @@
 
 ---
 
+- [ ] 🔴 Use Cartesia instead of ElevenLabs / switch services
+  - ~~play.ht~~ - Registration disabled,
+  - ~~Murf.ai~~ - Ultra low limits,
+  - Cartesia,
+  - Speechify (300ms latency w/o network VS ElevenLabs 70ms w/o network),
+  - Resemble.AI,
+  - Azure AI Speech,
+  - Google TTS - No cloning,
+  - Amazon TTS / Amazon Polly - Not exactly cloning,
+  - Humane Octave, Papla P1,
+  - Built-in TTS for testing at development (+ abstract out elevenlabsService so I can switch them?)?
+  - ========= LOCAL =========
+  - NOTE: [alltalkbeta](https://github.com/erew123/alltalk_tts/tree/alltalkbeta) - tools for local TTS (Coqui XTTS TTS, Piper, F5...)
+  - [GPT-Sovits](https://github.com/RVC-Boss/GPT-SoVITS)
+  - [Kokoro onnx](https://github.com/thewh1teagle/kokoro-onnx) (no cloning)
+  - Fish, MaskCGT, OpenVoice, RVC/XTTS2, F5-TTS...
+  - ~~CosyVoice~~ (GPU heavy), ~~Spark-TTS~~ (1s latency), 
 - [ ] 🔴 Add Pi client notifications (e.g. session timeout, end hotword detected session end, or just general session end) directly to state management logic (and possibly do that for other actions too) so that it's always necessarily synchronized and doesn't rely on us properly calling both change state and notify client (? needs more research)
 - [ ] 🔴 Play local acknowledgment sound (e.g., “mhm”, “listening...”) after hotword detection.
 - [ ] 🔴 Play sound before TARS replies, like "Mmmm..." to make it seem more snappy? (maybe)
