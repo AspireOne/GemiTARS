@@ -32,6 +32,7 @@
 
   - See: [openWakeWord user-specific models](https://github.com/dscripka/openWakeWord#user-specific-models)
 
+- [ ] 🟢 Possibly play a sound or otherwise singalise when a session ends (times out or session ending word is detected or something) (?)
 - [ ] 🟢 Implement TARS robot display output.
 - [ ] 🟢 Use normal .wav or .mp3 files for acknowledgement audio instead of raw binary data. We'll just convert it during startup before loading it into memory.
 
