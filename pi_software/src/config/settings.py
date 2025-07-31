@@ -59,4 +59,4 @@ class Config:
     HOTWORD_DEBUG_LOGGING = _get_bool_env('HOTWORD_DEBUG_LOGGING', False)  # Enable detailed confidence logging for debugging
     
     # Acknowledgement Audio Files
-    ACKNOWLEDGEMENT_AUDIO_FILES = ['talk_to_me.raw', 'huh.raw', 'yes.raw'] 
+    ACKNOWLEDGEMENT_AUDIO_FILES = ['huh.raw', 'yes.raw'] 
