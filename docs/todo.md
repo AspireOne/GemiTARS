@@ -40,6 +40,7 @@
 
 ## 🐛 Known Bugs
 
+- [ ] 🟢 When TTS is too long, the speaker craps itself (lags during playback, has long pauses between playback (buffer issue?))
 - [ ] 🔴 'Audio playback finished' message sent prematurely from the PI if TTS audio long (> ~2 sentences)!
 - [ ] 🟠 Fix popping sound on PI 2 W microphone + fix auto-starting aplay service (installed by Adafruit, tries to always play silence to fix the popping).
 - [ ] 🔴 When playing acknowledgement audio on the Pi, right after detecting a hotword, there's a chance the speaker output will be fed into the microphone (if the session establishes faster than the audio playback finishes). More likely with longer sentences. Solution: the mic should be somehow disabled or something (depending on the specific implementation of the current code) before the acknowledgement audio playback finishes.
