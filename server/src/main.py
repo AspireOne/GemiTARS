@@ -199,11 +199,12 @@ class TARSAssistant:
         return task
 
     def _sanitize_transcript_for_keyword_matching(self, text: str) -> str:
-        """Remove punctuation and whitespace from transcript for keyword matching."""
+        """Remove punctuation, whitespace, and '<noise>' from transcript for keyword matching."""
         # Remove specific characters that were in the original implementation
         chars_to_remove = '.!?," \n\t\r"\''
         translator = str.maketrans('', '', chars_to_remove)
-        return text.lower().translate(translator)
+        sanitized = text.lower().replace("<noise>", "")
+        return sanitized.translate(translator)
 
     async def _conversation_management_loop(self) -> None:
         """Manage conversation timeouts and state transitions."""
