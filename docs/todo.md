@@ -13,6 +13,7 @@
 
 ---
 
+- [ ] 🔴 Add Pi client notifications (e.g. session timeout, end hotword detected session end, or just general session end) directly to state management logic (and possibly do that for other actions too) so that it's always necessarily synchronized and doesn't rely on us properly calling both change state and notify client (? needs more research)
 - [ ] 🔴 Play local acknowledgment sound (e.g., “mhm”, “listening...”) after hotword detection.
 - [ ] 🔴 Play sound before TARS replies, like "Mmmm..." to make it seem more snappy? (maybe)
   - Use voice samples from the current model to reduce pitch inconsistency.

@@ -12,6 +12,7 @@ Usage: python src/main_with_hotword.py
 
 import os
 import asyncio
+import string
 from typing import Optional
 from websockets.exceptions import ConnectionClosedOK
 
@@ -127,6 +128,13 @@ class TARSAssistant:
             logger.info("Client disconnected during an active session. Forcing return to passive mode.")
             await self._enter_passive_mode()
 
+    async def _end_session_by_keyword(self) -> None:
+        """End a session triggered by keyword detection, notifying the Pi client first."""
+        logger.info("Ending session due to keyword detection. Notifying client.")
+        if self.pi_service:
+            await self.pi_service.send_control_message({"type": "session_end"})
+        await self._enter_passive_mode()
+
     async def _enter_passive_mode(self) -> None:
         """End a conversation and return to a passive state."""
         logger.info("Conversation ended. Returning to passive state.")
@@ -190,6 +198,13 @@ class TARSAssistant:
         task.add_done_callback(task_set.discard)
         return task
 
+    def _sanitize_transcript_for_keyword_matching(self, text: str) -> str:
+        """Remove punctuation and whitespace from transcript for keyword matching."""
+        # Remove specific characters that were in the original implementation
+        chars_to_remove = '.!?," \n\t\r"\''
+        translator = str.maketrans('', '', chars_to_remove)
+        return text.lower().translate(translator)
+
     async def _conversation_management_loop(self) -> None:
         """Manage conversation timeouts and state transitions."""
         while True:
@@ -247,6 +262,7 @@ class TARSAssistant:
                     await self._handle_turn_completion(full_response)
                     full_response = ""
                     is_processing = False
+                    current_transcription = ""  # Reset transcript after each turn
                     
         except ConnectionClosedOK:
             # This is an expected closure when the session times out or is otherwise gracefully terminated.
@@ -277,6 +293,14 @@ class TARSAssistant:
         print(response.transcription_text, end="", flush=True)
         current_transcription += response.transcription_text
         
+        sanitized_transcript = self._sanitize_transcript_for_keyword_matching(current_transcription)
+        logger.debug(f"full transcript: '{current_transcription}'")
+        logger.debug(f"sanitized transcript: '{sanitized_transcript}'")
+        if any(phrase in sanitized_transcript for phrase in Config.SESSION_END_PHRASES):
+            logger.info(f"Session ending phrase detected. Ending session.")
+            asyncio.create_task(self._end_session_by_keyword())
+            return "" # Return empty string to stop further processing
+
         if response.transcription_finished:
             current_transcription = ""
             

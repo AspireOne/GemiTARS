@@ -47,6 +47,8 @@ Begin now. Respond only as TARS. This is not a simulation. This is an order.
 
     # Conversation Settings
     CONVERSATION_TIMEOUT_SECONDS = 30
+    # Should be all lowercase, no punctuation, whitespace etc. basically just [a-zA-Z]
+    SESSION_END_PHRASES = ["thankyou", "okaygoodbye", "okgoodbye"]
     
     # ElevenLabs TTS Settings
     ELEVENLABS_VOICE_ID = "zsUvyVKkEvpw5ZMnMU2I" #"dXtC3XhB9GtPusIpNtQx"
