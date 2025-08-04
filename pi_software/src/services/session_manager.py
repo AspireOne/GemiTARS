@@ -101,8 +101,16 @@ class SessionManager:
         
     def on_button_pressed(self):
         """Callback executed when button is pressed."""
-        logger.info("Button pressed - starting session")
-        self._trigger_session_activation()
+        current_state = self.state_machine.state
+        
+        # If we're in an active session or processing response, terminate the session
+        if current_state != ClientState.LISTENING_FOR_HOTWORD:
+            logger.info("Button pressed during active session - terminating session")
+            asyncio.run_coroutine_threadsafe(self.end_session(), self.loop)
+        else:
+            # Otherwise, start a new session
+            logger.info("Button pressed - starting session")
+            self._trigger_session_activation()
         
     def _trigger_session_activation(self):
         """Common method to trigger session activation from hotword or button."""
