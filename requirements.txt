@@ -11,3 +11,4 @@ websockets
 yeelight
 rpi-lgpio
 gpiozero
+pigpio
