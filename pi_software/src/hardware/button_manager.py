@@ -3,6 +3,7 @@ Button Manager: Handles physical button input using gpiozero library.
 """
 
 import asyncio
+import time
 from typing import Callable, Optional
 
 from ..config.settings import Config
@@ -25,6 +26,7 @@ class ButtonManager:
         
         self.callback: Optional[ButtonPressedCallback] = None
         self.button = None
+        self.last_press_time = 0.0  # Track last successful press for manual debouncing
 
     def set_callback(self, callback: ButtonPressedCallback):
         """Sets the function to call when the button is pressed."""
@@ -55,7 +57,7 @@ class ButtonManager:
             self.button = Button(
                 self.gpio_pin,
                 pull_up=True,
-                bounce_time=self.debounce_delay
+                bounce_time=0.05  # Short bounce time for electrical noise filtering
             )
             self.button.when_pressed = self._handle_button_press
             
@@ -79,7 +81,17 @@ class ButtonManager:
     def _handle_button_press(self):
         """
         Internal callback for when gpiozero detects a button press.
+        Implements manual debouncing to allow instant first press while filtering noise.
         """
+        current_time = time.time()
+        
+        # Check if enough time has passed since the last successful press (manual debouncing)
+        if current_time - self.last_press_time < self.debounce_delay:
+            logger.debug(f"Button press ignored due to debounce (last press {current_time - self.last_press_time:.3f}s ago)")
+            return
+        
+        # Update last press time and process the press
+        self.last_press_time = current_time
         logger.info("Button pressed!")
         
         if self.callback:
