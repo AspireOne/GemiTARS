@@ -13,6 +13,7 @@ Usage: python src/main_with_hotword.py
 import os
 import asyncio
 import string
+import unicodedata
 from typing import Optional
 from websockets.exceptions import ConnectionClosedOK
 
@@ -60,6 +61,12 @@ class TARSAssistant:
         # Task management
         self.persistent_tasks = set()
         self.session_tasks = set()
+        
+        # Pre-sanitize session end phrases for efficient matching
+        self.sanitized_session_end_phrases = [
+            self._sanitize_transcript_for_keyword_matching(phrase)
+            for phrase in Config.SESSION_END_PHRASES
+        ]
         
     async def run(self) -> None:
         """Main TARS assistant execution loop."""
@@ -197,14 +204,20 @@ class TARSAssistant:
         task_set.add(task)
         task.add_done_callback(task_set.discard)
         return task
-
+    
     def _sanitize_transcript_for_keyword_matching(self, text: str) -> str:
-        """Remove punctuation, whitespace, and '<noise>' from transcript for keyword matching."""
-        # Remove specific characters that were in the original implementation
-        chars_to_remove = '.!?," \n\t\r"\''
-        translator = str.maketrans('', '', chars_to_remove)
-        sanitized = text.lower().replace("<noise>", "")
-        return sanitized.translate(translator)
+            """Remove punctuation, whitespace, diacritics, and '<noise>' from transcript for keyword matching."""
+            # Remove <noise> and lowercase
+            sanitized = text.lower().replace("<noise>", "")
+            # Normalize and remove diacritics (accents)
+            sanitized = ''.join(
+                c for c in unicodedata.normalize('NFKD', sanitized)
+                if not unicodedata.combining(c)
+            )
+            # Remove specific punctuation and whitespace
+            chars_to_remove = '.!?," \n\t\r"\''
+            translator = str.maketrans('', '', chars_to_remove)
+            return sanitized.translate(translator)
 
     async def _conversation_management_loop(self) -> None:
         """Manage conversation timeouts and state transitions."""
@@ -295,7 +308,7 @@ class TARSAssistant:
         current_transcription += response.transcription_text
         
         sanitized_transcript = self._sanitize_transcript_for_keyword_matching(current_transcription)
-        if sanitized_transcript in Config.SESSION_END_PHRASES:
+        if sanitized_transcript in self.sanitized_session_end_phrases:
             logger.info(f"Session ending phrase detected. Ending session.")
             asyncio.create_task(self._end_session_by_keyword())
             return "" # Return empty string to stop further processing

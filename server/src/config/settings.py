@@ -47,8 +47,20 @@ Begin now. Respond only as TARS. This is not a simulation. This is an order.
 
     # Conversation Settings
     CONVERSATION_TIMEOUT_SECONDS = 30
-    # Should be all lowercase, no punctuation, whitespace etc. basically just [a-zA-Z]
-    SESSION_END_PHRASES = ["thankyou", "okaythanks", "okaybye", "okgoodbye", "by", "weredonehere", "wearedonehere", "thatllbeall", "thatwillbeall", "standdown", "endoftransmission", "shutup"]
+    # These phrases will be sanitized at runtime to match transcript sanitization
+    SESSION_END_PHRASES = [
+        # Czech phrases
+        "díky", "děkuji", "děkuju", "to je všechno", "to je všechno díky", "na shledanou", "měj se",
+        "drž hubu", "pakuj do píči", "díky moc", "díky ti", "díky tars", "to je vše", "končím", "konec",
+        "sbohem", "měj se hezky", "měj se fajn", "čau", "čauky", "nazdar", "zatím", "pa", "papa",
+        
+        # English phrases   
+        "thank you", "thanks", "okay thanks", "okay bye", "okay goodbye", "bye", "goodbye", "we're done here",
+        "we are done here", "that'll be all", "that will be all", "stand down", "end of transmission", "shut up",
+        "see you", "see ya", "later", "talk to you later", "end session", "end conversation", "disconnect",
+        "terminate", "stop listening", "stop", "that's all", "that's it", "done", "finished", "enough",
+        "no more", "exit", "close", "abort", "over and out"
+    ]
     
     # ElevenLabs TTS Settings
     ELEVENLABS_VOICE_ID = "zsUvyVKkEvpw5ZMnMU2I" #"dXtC3XhB9GtPusIpNtQx"
