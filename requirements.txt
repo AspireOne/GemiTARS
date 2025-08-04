@@ -9,6 +9,5 @@ requests
 colorlog
 websockets
 yeelight
-rpi-lgpio
 gpiozero
 pigpio
