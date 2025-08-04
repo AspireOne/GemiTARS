@@ -11,6 +11,7 @@ from pi_software.src.config.settings import Config
 from ..core.state_machine import StateMachine, ClientState
 from ..audio.audio_interface import AudioInterface
 from ..core.hotword_detector import HotwordDetector
+from ..hardware.button_manager import ButtonManager
 from .websocket_client import PersistentWebSocketClient, ConnectionStatus
 from .local_sound_manager import LocalSoundManager
 from ..utils.logger import setup_logger
@@ -29,6 +30,7 @@ class SessionManager:
         hotword_detector: HotwordDetector,
         websocket_client: PersistentWebSocketClient,
         local_sound_manager: LocalSoundManager,
+        button_manager: ButtonManager,
         loop: asyncio.AbstractEventLoop
     ):
         self.state_machine = state_machine
@@ -36,6 +38,7 @@ class SessionManager:
         self.hotword_detector = hotword_detector
         self.websocket_client = websocket_client
         self.local_sound_manager = local_sound_manager
+        self.button_manager = button_manager
         self.loop = loop
         
         # Audio state tracking: "stopped", "hotword", "session"
@@ -46,6 +49,7 @@ class SessionManager:
     def _setup_callbacks(self):
         """Set up callbacks between components."""
         self.hotword_detector.set_callback(self.on_hotword_detected)
+        self.button_manager.set_callback(self.on_button_pressed)
         self.websocket_client.on_connected = self.on_connection_established
         self.websocket_client.on_disconnected = self.on_connection_lost
         self.websocket_client.on_audio_received = self.on_audio_received
@@ -92,6 +96,16 @@ class SessionManager:
 
     def on_hotword_detected(self):
         """Callback executed when hotword is detected."""
+        logger.info("Hotword detected - starting session")
+        self._trigger_session_activation()
+        
+    def on_button_pressed(self):
+        """Callback executed when button is pressed."""
+        logger.info("Button pressed - starting session")
+        self._trigger_session_activation()
+        
+    def _trigger_session_activation(self):
+        """Common method to trigger session activation from hotword or button."""
         # The start_session method will handle the state transition
         future = asyncio.run_coroutine_threadsafe(self.start_session(), self.loop)
         future.add_done_callback(self._handle_session_start_result)

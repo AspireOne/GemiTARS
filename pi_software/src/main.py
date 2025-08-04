@@ -5,6 +5,7 @@ Main entry point for GemiTARS Pi Client
 import asyncio
 from .core.state_machine import StateMachine
 from .core.hotword_detector import HotwordDetector
+from .hardware.button_manager import ButtonManager
 from .services.websocket_client import PersistentWebSocketClient
 from .services.session_manager import SessionManager
 from .services.local_sound_manager import LocalSoundManager
@@ -46,6 +47,12 @@ async def main():
     hotword_detector = HotwordDetector()
     websocket_client = PersistentWebSocketClient()
     
+    # Initialize button manager
+    button_manager = ButtonManager()
+    if not await button_manager.start():
+        logger.error("Failed to initialize button manager. Exiting.")
+        return
+    
     # Get event loop
     loop = asyncio.get_running_loop()
     
@@ -56,6 +63,7 @@ async def main():
         hotword_detector=hotword_detector,
         websocket_client=websocket_client,
         local_sound_manager=local_sound_manager,
+        button_manager=button_manager,
         loop=loop
     )
     
@@ -63,7 +71,7 @@ async def main():
         # Start the session manager (establishes persistent connection)
         await session_manager.start()
         
-        logger.info("GemiTARS Pi Client ready. Say 'Hey TARS' to activate.")
+        logger.info("GemiTARS Pi Client ready. Say 'Hey TARS' or press the button to activate.")
         
         # Keep running until interrupted
         await asyncio.Event().wait()
@@ -74,6 +82,7 @@ async def main():
         logger.info("Shutdown requested by user")
     finally:
         await session_manager.shutdown()
+        await button_manager.stop()
         logger.info("GemiTARS Pi Client shutdown complete")
 
 if __name__ == "__main__":

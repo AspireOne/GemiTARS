@@ -9,3 +9,4 @@ requests
 colorlog
 websockets
 yeelight
+gpiod
