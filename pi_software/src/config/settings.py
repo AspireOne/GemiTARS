@@ -65,4 +65,3 @@ class Config:
     BUTTON_ENABLED = _get_bool_env('BUTTON_ENABLED', True)  # Enable/disable button functionality
     BUTTON_GPIO_PIN = int(os.getenv('BUTTON_GPIO_PIN', '6'))  # GPIO pin number for button
     BUTTON_DEBOUNCE_DELAY = float(os.getenv('BUTTON_DEBOUNCE_DELAY', '0.2'))  # Debounce delay in seconds
-    BUTTON_POLLING_INTERVAL = float(os.getenv('BUTTON_POLLING_INTERVAL', '0.2'))  # How often to check button state
