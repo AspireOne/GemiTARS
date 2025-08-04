@@ -104,7 +104,7 @@ class SessionManager:
         current_state = self.state_machine.state
         
         # If we're in an active session or processing response, terminate the session
-        if current_state != ClientState.LISTENING_FOR_HOTWORD:
+        if current_state in [ClientState.ACTIVE_SESSION, ClientState.PROCESSING_RESPONSE]:
             logger.info("Button pressed during active session - terminating session")
             asyncio.run_coroutine_threadsafe(self.end_session(), self.loop)
         else:
@@ -198,6 +198,22 @@ class SessionManager:
         
         try:
             # CRITICAL: DO NOT disconnect WebSocket - it stays connected!
+            
+            # Notify server that client is ending the session (if we're connected and in an active session)
+            if (self.websocket_client.is_connected() and
+                self.state_machine.state in [ClientState.ACTIVE_SESSION, ClientState.PROCESSING_RESPONSE]):
+                try:
+                    success = await self.websocket_client.send_message_with_confirmation(
+                        {"type": "session_end"},
+                        timeout=2.0  # 2-second timeout for confirmation
+                    )
+                    if success:
+                        logger.info("Successfully notified server of session termination")
+                    else:
+                        logger.warning("Failed to notify server of session termination (no confirmation)")
+                except Exception as e:
+                    logger.warning(f"Error notifying server of session end: {e}")
+                    # Continue with local cleanup even if server notification fails
             
             # Wait for any pending playback
             try:
