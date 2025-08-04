@@ -60,8 +60,8 @@ class ButtonManager:
             self.chip = gpiod.Chip('gpiochip0')
             self.line = self.chip.get_line(self.gpio_pin)
             self.line.request(
-                consumer="button_manager", 
-                type=gpiod.LINE_REQ_DIR_IN, 
+                consumer="button_manager",
+                type=gpiod.LINE_REQ_DIR_IN,
                 flags=gpiod.LINE_REQ_FLAG_BIAS_PULL_UP
             )
             
@@ -78,9 +78,12 @@ class ButtonManager:
         except ImportError:
             logger.warning("gpiod library not available - button functionality disabled")
             return True  # Not an error, just unavailable
+        except FileNotFoundError:
+            logger.warning("GPIO hardware not available (not running on Pi or GPIO not accessible) - button functionality disabled")
+            return True  # Not an error, just unavailable
         except Exception as e:
-            logger.error(f"Failed to initialize button manager: {e}")
-            return False
+            logger.warning(f"GPIO hardware not accessible: {e} - button functionality disabled")
+            return True  # Changed from False to True - this shouldn't be a fatal error
 
     async def stop(self):
         """Stop monitoring the button and clean up resources."""
