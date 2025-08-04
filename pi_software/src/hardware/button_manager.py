@@ -17,10 +17,11 @@ class ButtonManager:
     Manages a physical button using gpiozero's event-driven system.
     """
 
-    def __init__(self):
+    def __init__(self, loop: asyncio.AbstractEventLoop):
         self.enabled = Config.BUTTON_ENABLED
         self.gpio_pin = Config.BUTTON_GPIO_PIN
         self.debounce_delay = Config.BUTTON_DEBOUNCE_DELAY
+        self.loop = loop
         
         self.callback: Optional[ButtonPressedCallback] = None
         self.button = None
@@ -85,7 +86,7 @@ class ButtonManager:
             try:
                 # Since this callback is executed in a different thread by gpiozero,
                 # we need to safely call our asyncio-based callback on the main event loop.
-                asyncio.run_coroutine_threadsafe(self._safe_callback(), asyncio.get_running_loop())
+                asyncio.run_coroutine_threadsafe(self._safe_callback(), self.loop)
             except Exception as e:
                 logger.error(f"Error scheduling button press callback: {e}")
 

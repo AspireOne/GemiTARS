@@ -47,14 +47,14 @@ async def main():
     hotword_detector = HotwordDetector()
     websocket_client = PersistentWebSocketClient()
     
+    # Get event loop
+    loop = asyncio.get_running_loop()
+    
     # Initialize button manager
-    button_manager = ButtonManager()
+    button_manager = ButtonManager(loop)
     if not await button_manager.start():
         logger.error("Failed to initialize button manager. Exiting.")
         return
-    
-    # Get event loop
-    loop = asyncio.get_running_loop()
     
     # Create session manager
     session_manager = SessionManager(
