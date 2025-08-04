@@ -51,6 +51,9 @@ Available formats:
 
 ## Software Configuration
 
+Use `sudo pigpiod -t 0` to run pigpiod before running the pi client. For the love of god just don't start it without the `-t 0` flag.
+It would use PCM and cause audio glitches - last time the speaker started smelling burnt. With `-t 0`, we use PWM.
+
 ### Device Overlay Help (dtoverlay -h googlevoicehat-soundcard):
 
 ```
