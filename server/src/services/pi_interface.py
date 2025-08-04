@@ -12,6 +12,7 @@ from typing import Callable, Awaitable, Optional
 HotwordCallback = Callable[[], Awaitable[None]]
 AudioCallback = Callable[[bytes], None]
 DisconnectCallback = Callable[[], Awaitable[None]]
+SessionEndCallback = Callable[[], Awaitable[None]]
 
 class PiInterfaceService(ABC):
     """
@@ -21,10 +22,11 @@ class PiInterfaceService(ABC):
 
     @abstractmethod
     async def initialize(
-        self, 
+        self,
         hotword_callback: HotwordCallback,
         audio_callback: AudioCallback,
-        disconnect_callback: Optional[DisconnectCallback] = None
+        disconnect_callback: Optional[DisconnectCallback] = None,
+        session_end_callback: Optional[SessionEndCallback] = None
     ) -> None:
         """
         Initialize the service, starting any necessary servers (e.g., WebSockets)
@@ -34,6 +36,7 @@ class PiInterfaceService(ABC):
             hotword_callback: An awaitable function to call when the hotword is detected.
             audio_callback: A function to call to process incoming audio chunks.
             disconnect_callback: An awaitable function to call when the client disconnects.
+            session_end_callback: An awaitable function to call when the client requests session termination.
         """
         pass
 

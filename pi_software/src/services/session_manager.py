@@ -249,7 +249,12 @@ class SessionManager:
             )
         elif msg_type == "session_end":
             logger.info("Server ended the session")
-            asyncio.run_coroutine_threadsafe(self.end_session(), self.loop)
+            # Only end session if we're actually in an active session state
+            current_state = self.state_machine.state
+            if current_state in [ClientState.ACTIVE_SESSION, ClientState.PROCESSING_RESPONSE]:
+                asyncio.run_coroutine_threadsafe(self.end_session(), self.loop)
+            else:
+                logger.debug(f"Ignoring session_end command - already in state: {current_state.name}")
 
     async def on_tts_stream_start(self):
         """Handle start of TTS stream from server."""

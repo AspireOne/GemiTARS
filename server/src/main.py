@@ -89,7 +89,8 @@ class TARSAssistant:
                 await self.pi_service.initialize(
                     hotword_callback=self._enter_active_mode,
                     audio_callback=self._on_audio_chunk_received,
-                    disconnect_callback=self._on_client_disconnected
+                    disconnect_callback=self._on_client_disconnected,
+                    session_end_callback=self._enter_passive_mode
                 )
             else:
                 logger.critical("Pi Interface Service not initialized. Exiting.")

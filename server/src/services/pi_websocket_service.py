@@ -5,11 +5,11 @@ Pi Websocket Service: Concrete implementation for Raspberry Pi communication.
 import asyncio
 import json
 import socket
-from typing import Optional, Any
+from typing import Optional, Any, Callable
 import websockets
 from websockets.exceptions import ConnectionClosed
 
-from .pi_interface import PiInterfaceService, HotwordCallback, AudioCallback, DisconnectCallback
+from .pi_interface import PiInterfaceService, HotwordCallback, AudioCallback, DisconnectCallback, SessionEndCallback
 from ..utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -32,6 +32,7 @@ class PiWebsocketService(PiInterfaceService):
         self.hotword_callback: Optional[HotwordCallback] = None
         self.audio_callback: Optional[AudioCallback] = None
         self.disconnect_callback: Optional[DisconnectCallback] = None
+        self.session_end_callback: Optional[SessionEndCallback] = None
 
     def _get_local_ip(self) -> str:
         """Retrieves the local IP address of the machine."""
@@ -47,11 +48,13 @@ class PiWebsocketService(PiInterfaceService):
         self,
         hotword_callback: HotwordCallback,
         audio_callback: AudioCallback,
-        disconnect_callback: Optional[DisconnectCallback] = None
+        disconnect_callback: Optional[DisconnectCallback] = None,
+        session_end_callback: Optional[SessionEndCallback] = None
     ) -> None:
         self.hotword_callback = hotword_callback
         self.audio_callback = audio_callback
         self.disconnect_callback = disconnect_callback
+        self.session_end_callback = session_end_callback
         
         local_ip = self._get_local_ip()
         logger.info(f"Starting WebSocket server on {self.host}:{self.port}")
@@ -111,6 +114,9 @@ class PiWebsocketService(PiInterfaceService):
                     elif command.get("type") == "playback_complete":
                         logger.debug("Received playback complete signal from client.")
                         self.playback_complete_event.set()
+                    elif command.get("type") == "session_end" and self.session_end_callback:
+                        logger.info("Received session_end message from client.")
+                        asyncio.create_task(self.session_end_callback()) # type: ignore
                 except json.JSONDecodeError:
                     logger.warning(f"Received invalid JSON from client: {message}")
 
