@@ -1,4 +1,8 @@
 import logging
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 """
 Simple centralized configuration for GemiTARS.
@@ -69,3 +73,8 @@ Begin now. Respond only as TARS. This is not a simulation. This is an order.
     ELEVENLABS_CHUNK_SIZE = 1024                 # Streaming chunk size
     ELEVENLABS_STABILITY = 0.75                  # Voice stability (0-1)
     ELEVENLABS_SIMILARITY_BOOST = 0.75           # Voice similarity (0-1) - match demo
+    
+    # These are just temporary for some testing, I will delete them later
+    TAPO_USERNAME = os.getenv('TAPO_USERNAME', 'N/A')
+    TAPO_PASSWORD = os.getenv('TAPO_PASSWORD', 'N/A')
+    TAPO_IP = os.getenv('TAPO_IP', 'N/A')

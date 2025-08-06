@@ -11,3 +11,4 @@ websockets
 yeelight
 gpiozero
 pigpio
+tapo

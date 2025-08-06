@@ -10,9 +10,9 @@
 
 - [ ] 🟠 Fix popping sound on PI 2 W microphone + fix auto-starting aplay service (installed by Adafruit, tries to always play silence to fix the popping). (https://claude.ai/chat/1212c816-140e-4e45-a94e-b5cf1bcfb1ed)
 
-
 ---
 
+- [ ] 🟢 Make separate requirements.txt files for the client and server
 - [ ] 🔴 Use Cartesia instead of ElevenLabs / switch services
   - ~~play.ht~~ - Registration disabled,
   - ~~Murf.ai~~ - Ultra low limits,
@@ -29,7 +29,7 @@
   - [GPT-Sovits](https://github.com/RVC-Boss/GPT-SoVITS)
   - [Kokoro onnx](https://github.com/thewh1teagle/kokoro-onnx) (no cloning)
   - Fish, MaskCGT, OpenVoice, RVC/XTTS2, F5-TTS...
-  - ~~CosyVoice~~ (GPU heavy), ~~Spark-TTS~~ (1s latency), 
+  - ~~CosyVoice~~ (GPU heavy), ~~Spark-TTS~~ (1s latency),
 - [ ] 🔴 Add Pi client notifications (e.g. session timeout, end hotword detected session end, or just general session end) directly to state management logic (and possibly do that for other actions too) so that it's always necessarily synchronized and doesn't rely on us properly calling both change state and notify client (? needs more research)
 - [ ] 🔴 Play local acknowledgment sound (e.g., “mhm”, “listening...”) after hotword detection.
 - [ ] 🔴 Play sound before TARS replies, like "Mmmm..." to make it seem more snappy? (maybe)
