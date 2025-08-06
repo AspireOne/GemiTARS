@@ -9,7 +9,7 @@
 **Pi:**
 
 - [ ] 🟠 Fix popping sound on PI 2 W microphone + fix auto-starting aplay service (installed by Adafruit, tries to always play silence to fix the popping). (https://claude.ai/chat/1212c816-140e-4e45-a94e-b5cf1bcfb1ed)
-- [ ] 🟠 Check CPU/mem usage (from another terminal) during hotword detection?
+
 
 ---
 
@@ -39,7 +39,7 @@
   - Possibly merge passive/listening/processing/active phases.
 - [ ] 🟡 Handle interruptions and echo/feedback cancellation (?).
 - [ ] 🟡 Retrain ElevenLabs voice.
-- [ ] 🟡 Add physical button to turn on the conversation (adjust code to allow it)
+
 - [ ] 🟡 Dynamic configuration of system settings (e.g., timeout) via voice.
 - [ ] 🟢 Dynamic user preferences
   - Humor/personality settings, memory of prior choices.
@@ -58,8 +58,7 @@
 ## 🐛 Known Bugs
 
 - [ ] 🟢 When TTS is too long, the speaker craps itself (lags during playback, has long pauses between playback (buffer issue?))
-- [ ] 🔴 'Audio playback finished' message sent prematurely from the PI if TTS audio long (> ~2 sentences)!
-- [ ] 🟠 Fix popping sound on PI 2 W microphone + fix auto-starting aplay service (installed by Adafruit, tries to always play silence to fix the popping).
+- [ ] 🟠 Fix popping sound on PI 2 W microphone + fix auto-starting aplay service (installed by Adafruit, tries to always play silence to fix the popping but then i cannot access the device).
 - [ ] 🔴 When playing acknowledgement audio on the Pi, right after detecting a hotword, there's a chance the speaker output will be fed into the microphone (if the session establishes faster than the audio playback finishes). More likely with longer sentences. Solution: the mic should be somehow disabled or something (depending on the specific implementation of the current code) before the acknowledgement audio playback finishes.
 - [ ] 🔴 Wait before the utterance is complete before matching end phrases, because otherwise I can have end phrase "thank you" but it will ignore that I am still saying e.g. "thank you for the pizza"
 
@@ -90,3 +89,6 @@
 - [x] 🟠 Review, improve I2S mic/speaker code on the Pi client.
 - [x] 🟠 Actually test mic/speaker reliability, audio clarity, and latency (add latency logging to every step possible)
 - [x] 🟠 Calibrate hotword sensitivity and parameters for INMP441 mic specifically.
+- [x] 🔴 'Audio playback finished' message sent prematurely from the PI if TTS audio long (> ~2 sentences)!
+- [x] 🟡 Add physical button to turn on the conversation (adjust code to allow it)
+- [x] 🟠 Check CPU/mem usage (from another terminal) during hotword detection? (~40% CPU, 43% memory, 5% pigpiod CPU)
