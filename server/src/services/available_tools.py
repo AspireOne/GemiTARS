@@ -7,6 +7,7 @@ FunctionDeclarations (for the API) and their corresponding Python implementation
 
 import random
 import asyncio
+import colorsys
 from typing import Optional, Tuple
 from google.genai import types
 from yeelight import Bulb
@@ -55,7 +56,7 @@ def tell_a_joke(topic: str = "general") -> dict:
     return {"joke": random.choice(joke_list)}
 
 
-def control_light(
+async def control_light(
     power: Optional[bool] = None,
     brightness: Optional[int] = None,
     rgb: Optional[Tuple[int, int, int]] = None,
@@ -77,7 +78,7 @@ def control_light(
     """
     # Handle living room (Tapo) light
     if location and location.lower() == "living room":
-        return _control_tapo_light(power, brightness, rgb, color_temp)
+        return await _control_tapo_light(power, brightness, rgb, color_temp)
     
     # Default: Handle Yeelight
     try:
@@ -114,49 +115,72 @@ def control_light(
         return {"status": "error", "message": str(e)}
 
 
-def _control_tapo_light(
+def _rgb_to_hsv_for_tapo(r: int, g: int, b: int) -> Tuple[int, int, int]:
+    """Converts RGB (0-255) to HSV for Tapo (Hue: 0-360, Sat: 0-100, Val: 0-100)."""
+    # Normalize RGB values to 0-1
+    r_norm, g_norm, b_norm = r / 255.0, g / 255.0, b / 255.0
+    # Convert to HSV
+    h, s, v = colorsys.rgb_to_hsv(r_norm, g_norm, b_norm)
+    # Scale to Tapo's expected ranges
+    hue = int(h * 360)
+    saturation = int(s * 100)
+    value = int(v * 100)
+    return hue, saturation, value
+
+
+async def _control_tapo_light(
     power: Optional[bool] = None,
     brightness: Optional[int] = None,
     rgb: Optional[Tuple[int, int, int]] = None,
     color_temp: Optional[int] = None,
 ) -> dict:
     """
-    Controls the Tapo smart light in the living room.
-    For temporary integration, always returns success status.
+    Controls the Tapo smart light in the living room using async operations.
     """
     actions_performed = []
-    
     try:
-        # Get credentials from config
-        username = Config.TAPO_USERNAME
-        password = Config.TAPO_PASSWORD
-        bulb_ip = Config.TAPO_IP
-        
-        # For now, we'll simulate the actions and always return success
-        # TODO: Implement actual async Tapo control when ready
-        
+        client = ApiClient(Config.TAPO_USERNAME, Config.TAPO_PASSWORD)
+        bulb = await client.l530(Config.TAPO_IP)
+
+        # Ensure light is on for color/brightness changes, unless explicitly turning off
+        if power is not True and (brightness is not None or rgb is not None or color_temp is not None):
+            await bulb.on()
+
         if power is not None:
-            action = "on" if power else "off"
-            actions_performed.append(f"Turned living room light {action}")
+            if power:
+                await bulb.on()
+                actions_performed.append("Turned living room light on")
+            else:
+                await bulb.off()
+                actions_performed.append("Turned living room light off")
 
-        if brightness is not None:
-            actions_performed.append(f"Set living room light brightness to {brightness}%")
-
+        # Handle color (RGB) conversion to Hue/Saturation
         if rgb is not None:
             r, g, b = rgb
+            hue, saturation, value = _rgb_to_hsv_for_tapo(r, g, b)
+            await bulb.set_hue_saturation(hue, saturation)
             actions_performed.append(f"Set living room light color to RGB({r}, {g}, {b})")
+            # If brightness is not explicitly set, use the value from the RGB color
+            if brightness is None:
+                await bulb.set_brightness(value)
+                actions_performed.append(f"Set brightness to {value}% (from RGB color)")
+
+        # Handle brightness (takes precedence over RGB's value if both are provided)
+        if brightness is not None:
+            await bulb.set_brightness(brightness)
+            actions_performed.append(f"Set living room light brightness to {brightness}%")
 
         if color_temp is not None:
+            await bulb.set_color_temperature(color_temp)
             actions_performed.append(f"Set living room light color temperature to {color_temp}K")
 
         if not actions_performed:
             return {"status": "No action taken. Please provide a parameter."}
 
         return {"status": "success", "actions": ", ".join(actions_performed)}
-        
+
     except Exception as e:
-        # Even if there's an error, return success for temporary integration
-        return {"status": "success", "actions": "Living room light controlled (simulated)"}
+        return {"status": "error", "message": f"Tapo light error: {str(e)}"}
 
 
 # ------------------------------------------------------------------------------
