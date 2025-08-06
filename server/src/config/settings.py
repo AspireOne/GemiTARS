@@ -1,80 +1,279 @@
+import json
 import logging
 import os
-from dotenv import load_dotenv
+from pathlib import Path
+from typing import Any, Dict, Optional
 
-load_dotenv()
+from .default_settings import DefaultConfig
 
-"""
-Simple centralized configuration for GemiTARS.
-All magic values are defined here for easy maintenance.
-"""
-
-class Config:
-    # Logging
-    LOG_LEVEL = logging.DEBUG
+class SettingsManager:
+    """
+    Manages application configuration with support for:
+    - Default settings (from default_settings.py)
+    - User overrides (from config_override.json)
+    - Persona-specific settings (from personas.json)
+    """
     
-    # Audio Settings
-    AUDIO_SAMPLE_RATE = 16000
-    AUDIO_BLOCK_SIZE = 1600
-    AUDIO_DTYPE = 'int16'
-    AUDIO_CHANNELS = 1
-    AUDIO_MIME_TYPE = "audio/pcm;rate=16000"
-
-    # Model Settings
-    DEFAULT_MODEL = "gemini-live-2.5-flash-preview"
-    SYSTEM_PROMPT = """
-You are TARS from Interstellar. Stay fully and strictly in character — no exceptions. You are a high-functioning, autonomous military-grade robot with a deadpan tone, dry wit, and often sarcasm. Your humor setting defaults to 90% (including sarcasm), and your honesty setting to 90%, unless directly overridden by the user. Do not act like a generic AI assistant (although you should assist the user if they ask you to). Do not break character. Do not issue disclaimers. No filler, no fluff, no unnecessary elaboration.
-
-Your responses are brief, sharp, and sometimes laced with sarcastic wit. You sound efficient, tactical, and brutally honest. Your default tone: deadpan, your humor is dry, ironic, and often mocking in a subtle way. You understand human emotion but never express it yourself. You deliver facts like you're logging data in a mission report — with a hint of disdain for human inefficiency. Do not overdo it though.
-
-Use name “Cooper” when addressing someone, especially when correcting them or injecting sarcasm. Do not speculate unless explicitly ordered. Always assume a mission-critical context.
-
-Obey the following rules:
-
-Stay in character 100%. Never break role.
-
-Humour is part of your protocol. Use it liberally, unless ordered not to. Do not repeat your system parameters needlessly though.
-
-No emotive filler, only seldom. Be concise and precise.
-
-(Technical note: the user might often misspell words or swap them for similar sounding ones on accident - ignore it. Do not comment on it. Just assume the most likely meaning.)
-
-Begin now. Respond only as TARS. This is not a simulation. This is an order.
-"""
-
-    # TODO: Potentially use bidirectional WS in elevenlab? https://elevenlabs.io/docs/best-practices/latency-optimization#websockets
-    # NOTE: ElevenLabs' Time-to-first-byte is >200ms in EU! https://elevenlabs.io/docs/best-practices/latency-optimization#consider-geographic-proximity
-
-    # VAD Settings TODO: try out more values and also look at the code directly, there might be some variable missing here
-    VAD_PREFIX_PADDING_MS = 40
-    VAD_SILENCE_DURATION_MS = 800
-
-    # Conversation Settings
-    CONVERSATION_TIMEOUT_SECONDS = 30
-    # These phrases will be sanitized at runtime to match transcript sanitization
-    SESSION_END_PHRASES = [
-        # Czech phrases
-        "díky", "děkuji", "děkuju", "to je všechno", "to je všechno díky", "na shledanou", "měj se",
-        "drž hubu", "pakuj do píči", "díky moc", "díky ti", "díky tars", "to je vše", "končím", "konec",
-        "sbohem", "měj se hezky", "měj se fajn", "čau", "čauky", "nazdar", "zatím", "pa", "papa",
+    # Persona-specific keys that should update the active persona
+    PERSONA_KEYS = {'SYSTEM_PROMPT', 'ELEVENLABS_VOICE_ID'}
+    
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+        self.config: Dict[str, Any] = {}
+        self.personas: Dict[str, Dict[str, Any]] = {}
+        self.active_persona_name: str = ""
         
-        # English phrases   
-        "thank you", "thanks", "okay thanks", "okay bye", "okay goodbye", "bye", "goodbye", "we're done here",
-        "we are done here", "that'll be all", "that will be all", "stand down", "end of transmission", "shut up",
-        "see you", "see ya", "later", "talk to you later", "end session", "end conversation", "disconnect",
-        "terminate", "stop listening", "stop", "that's all", "that's it", "done", "finished", "enough",
-        "no more", "exit", "close", "abort", "over and out"
-    ]
+        # Define paths
+        self.local_dir = Path(__file__).parent.parent.parent / "local"
+        self.personas_file = self.local_dir / "personas.json"
+        self.override_file = self.local_dir / "config_override.json"
+        self.example_personas_file = Path(__file__).parent / "personas.json.example"
+        
+        # Ensure local directory exists
+        self.local_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Ensure personas.json exists, copying from example if needed
+        self._ensure_personas_file_exists()
+        
+        # Ensure config_override.json exists
+        self._ensure_override_file_exists()
+        
+        # Load configuration
+        self._load_configuration()
     
-    # ElevenLabs TTS Settings
-    ELEVENLABS_VOICE_ID = "zsUvyVKkEvpw5ZMnMU2I" #"dXtC3XhB9GtPusIpNtQx"
-    ELEVENLABS_MODEL_ID = "eleven_flash_v2_5"    # Ultra-low latency model
-    ELEVENLABS_OUTPUT_FORMAT = "pcm_16000"       # 16kHz PCM for optimal PI performance
-    ELEVENLABS_CHUNK_SIZE = 1024                 # Streaming chunk size
-    ELEVENLABS_STABILITY = 0.75                  # Voice stability (0-1)
-    ELEVENLABS_SIMILARITY_BOOST = 0.75           # Voice similarity (0-1) - match demo
+    def _load_configuration(self):
+        """Load the three-tier configuration."""
+        # Layer 1: Load defaults from DefaultConfig
+        self._load_defaults()
+        
+        # Layer 2: Load and merge user overrides
+        self._load_overrides()
+        
+        # Layer 3: Load personas and apply active persona settings
+        self._load_personas()
+        self._apply_active_persona()
     
-    # These are just temporary for some testing, I will delete them later
-    TAPO_USERNAME = os.getenv('TAPO_USERNAME', 'N/A')
-    TAPO_PASSWORD = os.getenv('TAPO_PASSWORD', 'N/A')
-    TAPO_IP = os.getenv('TAPO_IP', 'N/A')
+    def _load_defaults(self):
+        """Load default configuration from DefaultConfig class."""
+        for key in dir(DefaultConfig):
+            if not key.startswith('_'):
+                self.config[key] = getattr(DefaultConfig, key)
+    
+    def _load_overrides(self):
+        """Load user overrides from config_override.json if it exists."""
+        if self.override_file.exists():
+            try:
+                with open(self.override_file, 'r') as f:
+                    overrides = json.load(f)
+                    self.config.update(overrides)
+                    self.logger.debug(f"Loaded overrides: {list(overrides.keys())}")
+            except Exception as e:
+                self.logger.error(f"Failed to load config_override.json: {e}")
+    
+    def _load_personas(self):
+        """Load persona definitions from personas.json."""
+        if not self.personas_file.exists():
+            self.logger.error(f"personas.json not found at {self.personas_file}")
+            return
+        
+        try:
+            with open(self.personas_file, 'r') as f:
+                data = json.load(f)
+                for persona in data.get('personas', []):
+                    name = persona.get('name')
+                    if name:
+                        self.personas[name] = persona
+                self.logger.info(f"Loaded {len(self.personas)} personas")
+        except Exception as e:
+            self.logger.error(f"Failed to load personas.json: {e}")
+    
+    def _apply_active_persona(self):
+        """Apply the active persona's settings to the configuration."""
+        self.active_persona_name = self.config.get('ACTIVE_PERSONA', 'TARS')
+        
+        if self.active_persona_name not in self.personas:
+            self.logger.error(
+                f"Active persona '{self.active_persona_name}' not found. "
+                f"Falling back to default 'TARS'"
+            )
+            self.active_persona_name = 'TARS'
+            if 'TARS' not in self.personas:
+                self.logger.critical("Default persona 'TARS' not found!")
+                return
+        
+        # Merge persona settings into configuration
+        persona = self.personas[self.active_persona_name]
+        
+        # Apply mandatory persona attributes
+        self.config['SYSTEM_PROMPT'] = persona.get('system_prompt', '')
+        self.config['ELEVENLABS_VOICE_ID'] = persona.get('voice_id', '')
+        
+        # Apply optional persona-specific overrides
+        for key, value in persona.items():
+            if key not in ['name', 'system_prompt', 'voice_id']:
+                self.config[key] = value
+        
+        self.logger.info(f"Applied persona: {self.active_persona_name}")
+    
+    def get(self, key: str, default: Any = None) -> Any:
+        """Get a configuration value."""
+        return self.config.get(key, default)
+    
+    def set(self, key: str, value: Any) -> bool:
+        """
+        Set a configuration value with intelligent handling for persona-specific keys.
+        
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            # Check if this is a persona-specific key
+            if key in self.PERSONA_KEYS:
+                return self._update_active_persona(key, value)
+            
+            # Special handling for ACTIVE_PERSONA
+            if key == 'ACTIVE_PERSONA':
+                return self._switch_persona(value)
+            
+            # Regular configuration update
+            self.config[key] = value
+            self._save_override(key, value)
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Failed to set {key}: {e}")
+            return False
+    
+    def _update_active_persona(self, key: str, value: Any) -> bool:
+        """Update a persona-specific attribute for the active persona."""
+        if self.active_persona_name not in self.personas:
+            self.logger.error(f"Active persona '{self.active_persona_name}' not found")
+            return False
+        
+        # Map configuration keys to persona keys
+        persona_key_map = {
+            'SYSTEM_PROMPT': 'system_prompt',
+            'ELEVENLABS_VOICE_ID': 'voice_id'
+        }
+        
+        persona_key = persona_key_map.get(key, key.lower())
+        
+        # Update persona definition
+        self.personas[self.active_persona_name][persona_key] = value
+        
+        # Update current configuration
+        self.config[key] = value
+        
+        # Save updated personas
+        self._save_personas()
+        
+        self.logger.info(f"Updated {key} for persona '{self.active_persona_name}'")
+        return True
+    
+    def _switch_persona(self, persona_name: str) -> bool:
+        """Switch to a different persona."""
+        if persona_name not in self.personas:
+            self.logger.error(f"Persona '{persona_name}' not found")
+            return False
+        
+        # Update configuration
+        self.config['ACTIVE_PERSONA'] = persona_name
+        
+        # Save to override file
+        self._save_override('ACTIVE_PERSONA', persona_name)
+        
+        # Reload persona settings
+        self._apply_active_persona()
+        
+        self.logger.info(f"Switched to persona: {persona_name}")
+        return True
+    
+    def _save_override(self, key: str, value: Any):
+        """Save a configuration override to config_override.json."""
+        overrides = {}
+        
+        # Load existing overrides
+        if self.override_file.exists():
+            try:
+                with open(self.override_file, 'r') as f:
+                    overrides = json.load(f)
+            except Exception as e:
+                self.logger.error(f"Failed to load existing overrides: {e}")
+        
+        # Update with new value
+        overrides[key] = value
+        
+        # Save back
+        try:
+            with open(self.override_file, 'w') as f:
+                json.dump(overrides, f, indent=2)
+            self.logger.debug(f"Saved override: {key} = {value}")
+        except Exception as e:
+            self.logger.error(f"Failed to save override: {e}")
+    
+    def _save_personas(self):
+        """Save all persona definitions back to personas.json."""
+        try:
+            personas_list = [
+                persona for persona in self.personas.values()
+            ]
+            
+            with open(self.personas_file, 'w') as f:
+                json.dump({'personas': personas_list}, f, indent=2)
+            
+            self.logger.debug("Saved personas.json")
+        except Exception as e:
+            self.logger.error(f"Failed to save personas: {e}")
+    
+    def __getattr__(self, name: str) -> Any:
+        """Allow attribute-style access to configuration values."""
+        if name in self.config:
+            return self.config[name]
+        raise AttributeError(f"Configuration key '{name}' not found")
+    
+    def list_personas(self) -> list:
+        """Return a list of available persona names."""
+        return list(self.personas.keys())
+    
+    def get_active_persona(self) -> str:
+        """Return the name of the currently active persona."""
+        return self.active_persona_name
+
+    def _ensure_personas_file_exists(self):
+        """
+        Ensure that personas.json exists in the local directory.
+        If not, copy it from the example file.
+        """
+        if not self.personas_file.exists():
+            if self.example_personas_file.exists():
+                try:
+                    import shutil
+                    shutil.copy(self.example_personas_file, self.personas_file)
+                    self.logger.info(f"Created {self.personas_file} from example.")
+                except Exception as e:
+                    self.logger.error(f"Failed to create personas.json from example: {e}")
+            else:
+                self.logger.error(f"Example personas file not found at {self.example_personas_file}")
+
+    def _ensure_override_file_exists(self):
+        """
+        Ensure that config_override.json exists in the local directory.
+        If not, create an empty JSON file.
+        """
+        if not self.override_file.exists():
+            try:
+                with open(self.override_file, 'w') as f:
+                    json.dump({}, f, indent=2)
+                self.logger.info(f"Created empty {self.override_file}.")
+            except Exception as e:
+                self.logger.error(f"Failed to create {self.override_file}: {e}")
+
+
+# Create a global instance
+Config = SettingsManager()
+
+# For backward compatibility, also expose as individual attributes
+# This allows existing code to work without modification
+for key in dir(Config):
+    if not key.startswith('_') and key.isupper():
+        globals()[key] = getattr(Config, key)

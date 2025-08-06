@@ -24,3 +24,4 @@ Thumbs.db
 
 # Logs
 *.log
+/server/local
