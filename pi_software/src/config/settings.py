@@ -15,6 +15,7 @@ _model_extension = '.tflite' if _inference_framework == 'tflite' else '.onnx'
 # Define model paths
 hey_tars_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'resources', f'Hey_Tars{_model_extension}'))
 tars_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'resources', f'Tars{_model_extension}'))
+alexa_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'resources', f'alexa{_model_extension}'))
 
 def _get_log_level():
     """Convert string log level to logging constant."""
