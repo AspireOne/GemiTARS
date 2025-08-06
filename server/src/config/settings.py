@@ -27,7 +27,7 @@ class SettingsManager:
         self.local_dir = Path(__file__).parent.parent.parent / "local"
         self.personas_file = self.local_dir / "personas.json"
         self.override_file = self.local_dir / "config_override.json"
-        self.example_personas_file = Path(__file__).parent / "personas.json.example"
+        self.example_personas_file = Path(__file__).parent / "personas.example.json"
         
         # Ensure local directory exists
         self.local_dir.mkdir(parents=True, exist_ok=True)
