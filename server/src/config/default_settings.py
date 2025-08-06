@@ -26,6 +26,7 @@ class DefaultConfig:
     
     # Active Persona (default)
     ACTIVE_PERSONA = "TARS"
+    AVAILABLE_PERSONAS = []
 
     # TODO: Potentially use bidirectional WS in elevenlab? https://elevenlabs.io/docs/best-practices/latency-optimization#websockets
     # NOTE: ElevenLabs' Time-to-first-byte is >200ms in EU! https://elevenlabs.io/docs/best-practices/latency-optimization#consider-geographic-proximity

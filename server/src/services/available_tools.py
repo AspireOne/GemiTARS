@@ -18,6 +18,33 @@ from ..config.settings import Config
 # Tool Implementations
 # ------------------------------------------------------------------------------
 
+def change_persona(persona_name: str) -> dict:
+    """
+    Changes the active persona to the specified one.
+
+    Args:
+        persona_name: The name of the persona to switch to.
+
+    Returns:
+        A dictionary confirming the action or reporting an error.
+    """
+    if not persona_name:
+        return {"status": "error", "message": "Persona name cannot be empty."}
+
+    available_personas = Config.get('AVAILABLE_PERSONAS', [])
+    if persona_name not in available_personas:
+        return {
+            "status": "error",
+            "message": f"Persona '{persona_name}' not found. "
+                       f"Available personas are: {', '.join(available_personas)}"
+        }
+
+    success = Config.set('ACTIVE_PERSONA', persona_name)
+    if success:
+        return {"status": "success", "message": f"Active persona changed to {persona_name}."}
+    else:
+        return {"status": "error", "message": "Failed to change persona due to an internal error."}
+
 def tell_a_joke(topic: str = "general") -> dict:
     """
     Tells a joke, optionally on a given topic.
@@ -234,17 +261,43 @@ control_light_declaration = types.FunctionDeclaration(
     ),
 )
 
+# --- Tool Schemas ---
+# A list of all function declarations to be sent to the Gemini API.
+
+# Dynamically create the description for the persona name parameter
+available_personas_list = Config.get('AVAILABLE_PERSONAS', [])
+persona_name_description = (
+    "The name of the persona to switch to. "
+    f"Available options are: {', '.join(available_personas_list)}"
+)
+
+change_persona_declaration = types.FunctionDeclaration(
+    name="change_persona",
+    description="Changes the active persona to a different one. This will change the bot's voice, personality, and system prompt.",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "persona_name": types.Schema(
+                type=types.Type.STRING,
+                description=persona_name_description,
+                enum=available_personas_list
+            )
+        },
+        required=["persona_name"],
+    ),
+)
+
+tool_schemas = [
+    tell_a_joke_declaration,
+    control_light_declaration,
+    change_persona_declaration,
+]
+
 # --- Tool Registry ---
 # A mapping of tool names to their actual Python function implementations.
 # This allows the GeminiService to dynamically call the correct function.
 available_tools = {
     "tell_a_joke": tell_a_joke,
     "control_light": control_light,
+    "change_persona": change_persona,
 }
-
-# --- Tool Schemas ---
-# A list of all function declarations to be sent to the Gemini API.
-tool_schemas = [
-    tell_a_joke_declaration,
-    control_light_declaration,
-]

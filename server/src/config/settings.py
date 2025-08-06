@@ -63,7 +63,7 @@ class SettingsManager:
         """Load user overrides from config_override.json if it exists."""
         if self.override_file.exists():
             try:
-                with open(self.override_file, 'r') as f:
+                with open(self.override_file, 'r', encoding='utf-8') as f:
                     overrides = json.load(f)
                     self.config.update(overrides)
                     self.logger.debug(f"Loaded overrides: {list(overrides.keys())}")
@@ -77,13 +77,15 @@ class SettingsManager:
             return
         
         try:
-            with open(self.personas_file, 'r') as f:
+            with open(self.personas_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 for persona in data.get('personas', []):
                     name = persona.get('name')
                     if name:
                         self.personas[name] = persona
                 self.logger.info(f"Loaded {len(self.personas)} personas")
+                # Populate available personas
+                self.config['AVAILABLE_PERSONAS'] = self.list_personas()
         except Exception as e:
             self.logger.error(f"Failed to load personas.json: {e}")
     
@@ -187,6 +189,37 @@ class SettingsManager:
         
         self.logger.info(f"Switched to persona: {persona_name}")
         return True
+
+    def create_persona(self, name: str, system_prompt: str, voice_id: str, **kwargs: Any) -> bool:
+        """
+        Creates a new persona and saves it to personas.json.
+
+        Args:
+            name (str): The name of the new persona.
+            system_prompt (str): The system prompt for the persona.
+            voice_id (str): The ElevenLabs voice ID for the persona.
+            **kwargs: Optional additional persona attributes.
+
+        Returns:
+            bool: True if the persona was created successfully, False otherwise.
+        """
+        if name in self.personas:
+            self.logger.error(f"Persona '{name}' already exists.")
+            return False
+
+        new_persona = {
+            'name': name,
+            'system_prompt': system_prompt,
+            'voice_id': voice_id,
+            **kwargs
+        }
+
+        self.personas[name] = new_persona
+        self.config['AVAILABLE_PERSONAS'] = self.list_personas()
+        self._save_personas()
+
+        self.logger.info(f"Successfully created new persona: {name}")
+        return True
     
     def _save_override(self, key: str, value: Any):
         """Save a configuration override to config_override.json."""
@@ -195,7 +228,7 @@ class SettingsManager:
         # Load existing overrides
         if self.override_file.exists():
             try:
-                with open(self.override_file, 'r') as f:
+                with open(self.override_file, 'r', encoding='utf-8') as f:
                     overrides = json.load(f)
             except Exception as e:
                 self.logger.error(f"Failed to load existing overrides: {e}")
@@ -205,7 +238,7 @@ class SettingsManager:
         
         # Save back
         try:
-            with open(self.override_file, 'w') as f:
+            with open(self.override_file, 'w', encoding='utf-8') as f:
                 json.dump(overrides, f, indent=2)
             self.logger.debug(f"Saved override: {key} = {value}")
         except Exception as e:
@@ -218,8 +251,8 @@ class SettingsManager:
                 persona for persona in self.personas.values()
             ]
             
-            with open(self.personas_file, 'w') as f:
-                json.dump({'personas': personas_list}, f, indent=2)
+            with open(self.personas_file, 'w', encoding='utf-8') as f:
+                json.dump({'personas': personas_list}, f, indent=2, ensure_ascii=False)
             
             self.logger.debug("Saved personas.json")
         except Exception as e:
@@ -262,7 +295,7 @@ class SettingsManager:
         """
         if not self.override_file.exists():
             try:
-                with open(self.override_file, 'w') as f:
+                with open(self.override_file, 'w', encoding='utf-8') as f:
                     json.dump({}, f, indent=2)
                 self.logger.info(f"Created empty {self.override_file}.")
             except Exception as e:
