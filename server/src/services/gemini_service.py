@@ -11,6 +11,7 @@ This service encapsulates:
 """
 
 import asyncio
+import inspect
 import os
 from typing import Any, AsyncGenerator, Optional, Callable, AsyncContextManager, List
 from google import genai
@@ -268,7 +269,12 @@ class GeminiService:
                 logger.info(f"Executing with args: {tool_args}")
                 
                 try:
-                    result = tool_func(**tool_args)
+                    # Check if the function is a coroutine function and await it
+                    if inspect.iscoroutinefunction(tool_func):
+                        result = await tool_func(**tool_args)
+                    else:
+                        result = tool_func(**tool_args)
+                        
                     logger.info(f"Tool '{tool_name}' executed successfully. Result: {result}")
                     
                     function_response = types.FunctionResponse(
