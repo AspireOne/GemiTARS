@@ -88,11 +88,11 @@ class GeminiService:
         self.session: Optional[AsyncSession] = None
         self._connection_manager: Optional[AsyncContextManager[AsyncSession]] = None
         self.audio_queue = asyncio.Queue()
+        self._google_search_enabled = Config.GEMINI_GOOGLE_SEARCH_ENABLED
 
         # Default configuration with VAD enabled
         self.config: types.LiveConnectConfig = types.LiveConnectConfig(
             response_modalities=[types.Modality.TEXT],
-            tools=tool_schemas,
             context_window_compression=types.ContextWindowCompressionConfig(
                 sliding_window=types.SlidingWindow(),
                 trigger_tokens=GeminiService.SLIDING_WINDOW_TOKENS_TRIGGER,
@@ -115,7 +115,7 @@ class GeminiService:
         # Extension points for future features
         self.function_registry = {}  # Maps tool names to functions
         self.response_handlers = []
-        self.tools_config = None # For storing tool schemas
+        self.tools_config = [{"function_declarations": tool_schemas}]
         
     def set_config(self, config: dict) -> None:
         """
@@ -227,16 +227,22 @@ class GeminiService:
         
     async def __aenter__(self):
         """Async context manager entry."""
-        # Store the context manager from the client
-        final_config = self.config
         update_dict = {}
+        
+        # Build the tools list dynamically
+        final_tools = []
+        if self.tools_config:
+            final_tools.extend(self.tools_config)
+        if self._google_search_enabled:
+            final_tools.append({'google_search': {}})
+            
+        if final_tools:
+            update_dict['tools'] = final_tools
+
         if self.system_prompt:
             update_dict['system_instruction'] = self.system_prompt
-        if self.tools_config:
-            update_dict['tools'] = self.tools_config
-            
-        if update_dict:
-            final_config = self.config.model_copy(update=update_dict)
+
+        final_config = self.config.model_copy(update=update_dict) if update_dict else self.config
 
         self._connection_manager = self.client.aio.live.connect(
             model=self.model,

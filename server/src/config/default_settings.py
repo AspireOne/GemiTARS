@@ -23,6 +23,7 @@ class DefaultConfig:
 
     # Model Settings
     DEFAULT_MODEL = "gemini-live-2.5-flash-preview"
+    GEMINI_GOOGLE_SEARCH_ENABLED = True
     
     # Active Persona (default)
     ACTIVE_PERSONA = "TARS"
@@ -32,8 +33,8 @@ class DefaultConfig:
     # NOTE: ElevenLabs' Time-to-first-byte is >200ms in EU! https://elevenlabs.io/docs/best-practices/latency-optimization#consider-geographic-proximity
 
     # VAD Settings TODO: try out more values and also look at the code directly, there might be some variable missing here
-    VAD_PREFIX_PADDING_MS = 40
-    VAD_SILENCE_DURATION_MS = 800
+    VAD_PREFIX_PADDING_MS = 200
+    VAD_SILENCE_DURATION_MS = 700
 
     # Conversation Settings
     CONVERSATION_TIMEOUT_SECONDS = 30
