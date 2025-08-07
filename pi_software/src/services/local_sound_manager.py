@@ -3,6 +3,8 @@ Local Sound Manager: Handles loading and management of local audio files.
 """
 
 import os
+import soundfile as sf
+import numpy as np
 from typing import Dict, Optional
 from ..config.settings import Config
 from ..utils.logger import setup_logger
@@ -14,7 +16,7 @@ class LocalSoundManager:
     """
     Manages local audio files by loading them into memory at startup.
     """
-    RAW_FILE_EXTENSION = '.raw'
+    WAV_FILE_EXTENSION = '.wav'
 
     def __init__(self):
         self.sounds: Dict[str, bytes] = {}
@@ -24,7 +26,8 @@ class LocalSoundManager:
 
     async def initialize(self) -> bool:
         """
-        Load all configured acknowledgement audio files into memory.
+        Load all configured acknowledgement audio files into memory, converting them
+        to the required raw PCM format.
         
         Returns:
             True if initialization was successful, False otherwise.
@@ -38,16 +41,25 @@ class LocalSoundManager:
                     continue
                 
                 try:
-                    with open(file_path, 'rb') as f:
-                        audio_data = f.read()
+                    # Read WAV file and convert to target format
+                    audio_data, samplerate = sf.read(
+                        file_path,
+                        dtype=Config.AUDIO_DTYPE,
+                        channels=Config.AUDIO_CHANNELS,
+                        samplerate=Config.AUDIO_SAMPLE_RATE,
+                        always_2d=False
+                    )
+                    
+                    # Convert numpy array to raw bytes
+                    raw_audio_data = audio_data.tobytes()
                     
                     # Store the filename without extension as the key
                     key = os.path.splitext(filename)[0]
-                    self.sounds[key] = audio_data
-                    logger.info(f"Loaded acknowledgement sound: {filename} ({len(audio_data)} bytes)")
+                    self.sounds[key] = raw_audio_data
+                    logger.info(f"Loaded and converted acknowledgement sound: {filename} ({len(raw_audio_data)} bytes)")
                     
                 except Exception as e:
-                    logger.error(f"Error loading audio file {filename}: {e}")
+                    logger.error(f"Error loading/converting audio file {filename}: {e}")
                     
             if not self.sounds:
                 logger.warning("No acknowledgement audio files were loaded successfully")
@@ -71,9 +83,9 @@ class LocalSoundManager:
             Audio data as bytes, or None if not found
         """
         
-        # Strip ".raw" from sound_name if present
-        if sound_name.endswith(self.RAW_FILE_EXTENSION):
-            sound_name = sound_name[:-len(self.RAW_FILE_EXTENSION)]
+        # Strip ".wav" from sound_name if present
+        if sound_name.endswith(self.WAV_FILE_EXTENSION):
+            sound_name = sound_name[:-len(self.WAV_FILE_EXTENSION)]
         
         return self.sounds.get(sound_name)
 

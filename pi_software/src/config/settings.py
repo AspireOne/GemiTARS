@@ -60,7 +60,7 @@ class Config:
     HOTWORD_DEBUG_LOGGING = _get_bool_env('HOTWORD_DEBUG_LOGGING', False)  # Enable detailed confidence logging for debugging
     
     # Acknowledgement Audio Files
-    ACKNOWLEDGEMENT_AUDIO_FILES = ['huh.raw', 'yes.raw']
+    ACKNOWLEDGEMENT_AUDIO_FILES = ['huh.wav', 'yes.wav', 'talk_to_me.wav']
     
     # Button Settings
     BUTTON_ENABLED = _get_bool_env('BUTTON_ENABLED', True)  # Enable/disable button functionality
