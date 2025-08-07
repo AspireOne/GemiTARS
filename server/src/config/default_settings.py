@@ -23,7 +23,7 @@ class DefaultConfig:
 
     # Model Settings
     DEFAULT_MODEL = "gemini-live-2.5-flash-preview"
-    GEMINI_GOOGLE_SEARCH_ENABLED = True
+    GEMINI_GOOGLE_SEARCH_ENABLED = False
     
     # Active Persona (default)
     ACTIVE_PERSONA = "TARS"
