@@ -6,8 +6,8 @@ load_dotenv()
 
 """
 Default configuration for GemiTARS.
-These are the baseline values that can be overridden by config_override.json
-and persona-specific settings from personas.json.
+These are the baseline values that can be overridden by config_override.yml
+and persona-specific settings from personas.yml.
 """
 
 class DefaultConfig:

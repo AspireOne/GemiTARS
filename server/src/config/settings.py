@@ -1,4 +1,4 @@
-import json
+import yaml
 import logging
 import os
 from pathlib import Path
@@ -10,8 +10,8 @@ class SettingsManager:
     """
     Manages application configuration with support for:
     - Default settings (from default_settings.py)
-    - User overrides (from config_override.json)
-    - Persona-specific settings (from personas.json)
+    - User overrides (from config_override.yml)
+    - Persona-specific settings (from personas.yml)
     """
     
     # Persona-specific keys that should update the active persona
@@ -25,17 +25,17 @@ class SettingsManager:
         
         # Define paths
         self.local_dir = Path(__file__).parent.parent.parent / "local"
-        self.personas_file = self.local_dir / "personas.json"
-        self.override_file = self.local_dir / "config_override.json"
-        self.example_personas_file = Path(__file__).parent / "personas.example.json"
+        self.personas_file = self.local_dir / "personas.yml"
+        self.override_file = self.local_dir / "config_override.yml"
+        self.example_personas_file = Path(__file__).parent / "personas.example.yml"
         
         # Ensure local directory exists
         self.local_dir.mkdir(parents=True, exist_ok=True)
         
-        # Ensure personas.json exists, copying from example if needed
+        # Ensure personas.yml exists, copying from example if needed
         self._ensure_personas_file_exists()
         
-        # Ensure config_override.json exists
+        # Ensure config_override.yml exists
         self._ensure_override_file_exists()
         
         # Load configuration
@@ -60,25 +60,26 @@ class SettingsManager:
                 self.config[key] = getattr(DefaultConfig, key)
     
     def _load_overrides(self):
-        """Load user overrides from config_override.json if it exists."""
+        """Load user overrides from config_override.yml if it exists."""
         if self.override_file.exists():
             try:
                 with open(self.override_file, 'r', encoding='utf-8') as f:
-                    overrides = json.load(f)
-                    self.config.update(overrides)
-                    self.logger.debug(f"Loaded overrides: {list(overrides.keys())}")
+                    overrides = yaml.safe_load(f)
+                    if overrides:
+                        self.config.update(overrides)
+                        self.logger.debug(f"Loaded overrides: {list(overrides.keys())}")
             except Exception as e:
-                self.logger.error(f"Failed to load config_override.json: {e}")
+                self.logger.error(f"Failed to load config_override.yml: {e}")
     
     def _load_personas(self):
-        """Load persona definitions from personas.json."""
+        """Load persona definitions from personas.yml."""
         if not self.personas_file.exists():
-            self.logger.error(f"personas.json not found at {self.personas_file}")
+            self.logger.error(f"personas.yml not found at {self.personas_file}")
             return
         
         try:
             with open(self.personas_file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
+                data = yaml.safe_load(f)
                 for persona in data.get('personas', []):
                     name = persona.get('name')
                     if name:
@@ -87,7 +88,7 @@ class SettingsManager:
                 # Populate available personas
                 self.config['AVAILABLE_PERSONAS'] = self.list_personas()
         except Exception as e:
-            self.logger.error(f"Failed to load personas.json: {e}")
+            self.logger.error(f"Failed to load personas.yml: {e}")
     
     def _apply_active_persona(self):
         """Apply the active persona's settings to the configuration."""
@@ -192,7 +193,7 @@ class SettingsManager:
 
     def create_persona(self, name: str, system_prompt: str, voice_id: str, **kwargs: Any) -> bool:
         """
-        Creates a new persona and saves it to personas.json.
+        Creates a new persona and saves it to personas.yml.
 
         Args:
             name (str): The name of the new persona.
@@ -222,14 +223,16 @@ class SettingsManager:
         return True
     
     def _save_override(self, key: str, value: Any):
-        """Save a configuration override to config_override.json."""
+        """Save a configuration override to config_override.yml."""
         overrides = {}
         
         # Load existing overrides
         if self.override_file.exists():
             try:
                 with open(self.override_file, 'r', encoding='utf-8') as f:
-                    overrides = json.load(f)
+                    existing_overrides = yaml.safe_load(f)
+                    if existing_overrides:
+                        overrides = existing_overrides
             except Exception as e:
                 self.logger.error(f"Failed to load existing overrides: {e}")
         
@@ -239,22 +242,22 @@ class SettingsManager:
         # Save back
         try:
             with open(self.override_file, 'w', encoding='utf-8') as f:
-                json.dump(overrides, f, indent=2)
+                yaml.dump(overrides, f, indent=2, allow_unicode=True)
             self.logger.debug(f"Saved override: {key} = {value}")
         except Exception as e:
             self.logger.error(f"Failed to save override: {e}")
     
     def _save_personas(self):
-        """Save all persona definitions back to personas.json."""
+        """Save all persona definitions back to personas.yml."""
         try:
             personas_list = [
                 persona for persona in self.personas.values()
             ]
             
             with open(self.personas_file, 'w', encoding='utf-8') as f:
-                json.dump({'personas': personas_list}, f, indent=2, ensure_ascii=False)
+                yaml.dump({'personas': personas_list}, f, indent=2, allow_unicode=True)
             
-            self.logger.debug("Saved personas.json")
+            self.logger.debug("Saved personas.yml")
         except Exception as e:
             self.logger.error(f"Failed to save personas: {e}")
     
@@ -298,7 +301,7 @@ class SettingsManager:
 
     def _ensure_personas_file_exists(self):
         """
-        Ensure that personas.json exists in the local directory.
+        Ensure that personas.yml exists in the local directory.
         If not, copy it from the example file.
         """
         if not self.personas_file.exists():
@@ -308,19 +311,19 @@ class SettingsManager:
                     shutil.copy(self.example_personas_file, self.personas_file)
                     self.logger.info(f"Created {self.personas_file} from example.")
                 except Exception as e:
-                    self.logger.error(f"Failed to create personas.json from example: {e}")
+                    self.logger.error(f"Failed to create personas.yml from example: {e}")
             else:
                 self.logger.error(f"Example personas file not found at {self.example_personas_file}")
 
     def _ensure_override_file_exists(self):
         """
-        Ensure that config_override.json exists in the local directory.
-        If not, create an empty JSON file.
+        Ensure that config_override.yml exists in the local directory.
+        If not, create an empty YAML file.
         """
         if not self.override_file.exists():
             try:
                 with open(self.override_file, 'w', encoding='utf-8') as f:
-                    json.dump({}, f, indent=2)
+                    yaml.dump({}, f)
                 self.logger.info(f"Created empty {self.override_file}.")
             except Exception as e:
                 self.logger.error(f"Failed to create {self.override_file}: {e}")

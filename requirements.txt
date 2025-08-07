@@ -13,3 +13,6 @@ gpiozero
 pigpio
 tapo
 pydantic
+PyYAML
+soundfile
+pyaudio
