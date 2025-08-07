@@ -8,15 +8,27 @@ FunctionDeclarations (for the API) and their corresponding Python implementation
 import random
 import asyncio
 import colorsys
+import logging
+import os
 from typing import Optional, Tuple
+from pathlib import Path
 from google.genai import types
+from google import genai
 from yeelight import Bulb
 from tapo import ApiClient
 from ..config.settings import Config
+from ..utils.logger import setup_logger
+from pydantic import BaseModel
+
+logger = setup_logger(__name__)
 
 # ------------------------------------------------------------------------------
 # Tool Implementations
 # ------------------------------------------------------------------------------
+
+class SystemPromptUpdate(BaseModel):
+    updated_system_prompt: str
+    friendly_description_of_changes_made: str
 
 def change_persona(persona_name: str) -> dict:
     """
@@ -45,42 +57,79 @@ def change_persona(persona_name: str) -> dict:
     else:
         return {"status": "error", "message": "Failed to change persona due to an internal error."}
 
-def tell_a_joke(topic: str = "general") -> dict:
+
+def update_system_prompt(update_request: str) -> dict:
     """
-    Tells a joke, optionally on a given topic.
+    Updates the current persona's system prompt based on a user's request.
+    This tool will intelligently rewrite the existing prompt to incorporate the requested changes.
 
     Args:
-        topic: The topic of the joke (e.g., "programming", "dad", "science").
+        update_request: A string describing the desired change (e.g., "Make it more affectionate,"
+                        "Add a rule to always use tools for light changes.").
 
     Returns:
-        A dictionary containing the joke.
+        A dictionary confirming the action or reporting an error.
     """
-    jokes = {
-    "programming": [
-        "Why did the JavaScript developer go broke? Because he kept using 'var' instead of 'let'.",
-        "I told my computer I needed a break, and it started updating.",
-        "Debugging: where you stare at your code like it betrayed you — because it did."
-    ],
-    "dad": [
-        "I told my son I’d make him a belt out of watches. He said, 'That’s a waist of time.'",
-        "Tried to catch some fog this morning. I mist.",
-        "I only know 25 letters of the alphabet. I don't know y."
-    ],
-    "science": [
-        "My physics teacher broke up with me — said I had too much potential energy.",
-        "Einstein developed a theory about space. And it’s about time.",
-        "Why did the biologist break up with the physicist? No chemistry."
-    ],
-    "general": [
-        "Why did the ghost go to therapy? It had too many haunting thoughts.",
-        "Tried to organize a hide-and-seek contest… but good players are hard to find.",
-        "What do you call an optimistic vampire? A sucker for good vibes."
-    ]
-    }
+    if not update_request:
+        return {"status": "error", "message": "Update request cannot be empty."}
 
-    
-    joke_list = jokes.get(topic.lower(), jokes["general"])
-    return {"joke": random.choice(joke_list)}
+    try:
+        # --- Part 2: LLM-based Prompt Rewriting ---
+        
+        # 1. Get the current system prompt
+        current_prompt = Config.get('SYSTEM_PROMPT', '')
+        
+        # 2. Load the editor prompt template
+        prompt_template_path = Path(__file__).parent / "prompt_to_edit_system_prompt.txt"
+        with open(prompt_template_path, 'r', encoding='utf-8') as f:
+            editor_prompt_template = f.read()
+            
+        # 3. Populate the template
+        final_prompt = editor_prompt_template.replace("{{adjustments}}", update_request)
+        final_prompt = final_prompt.replace("{{original_prompt}}", current_prompt)
+        
+        # 4. Call the editing LLM
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if not api_key:
+            logger.error("GEMINI_API_KEY not found in environment.")
+            return {"status": "error", "message": "GEMINI_API_KEY not found in environment."}
+        
+        logger.debug(f"prompt: {final_prompt}")
+            
+        client = genai.Client(api_key=api_key)
+        _response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=final_prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.45,
+                response_mime_type="application/json",
+                response_schema=SystemPromptUpdate,
+                response_modalities=[types.Modality.TEXT],
+            ),
+        )
+        
+        response: SystemPromptUpdate = _response.parsed
+        updated_system_prompt = response.updated_system_prompt.strip().replace("```", "").replace('"""', "")
+        changes_description = response.friendly_description_of_changes_made
+        
+        logger.info("--- System Prompt Update ---")
+        logger.info(f"Changes: {changes_description}")
+        logger.info(f"New Prompt: {updated_system_prompt}")
+        logger.info("--------------------------")
+        
+        # 5. Save the new prompt
+        success = Config.set('SYSTEM_PROMPT', updated_system_prompt)
+        
+        if success:
+            return {
+                "status": "success",
+                "message": f"Changes made: {changes_description}",
+            }
+        else:
+            return {"status": "error", "message": "Failed to save the updated system prompt."}
+            
+    except Exception as e:
+        return {"status": "error", "message": f"An unexpected error occurred during prompt update: {str(e)}"}
 
 
 async def control_light(
@@ -214,21 +263,6 @@ async def _control_tapo_light(
 # Tool Definitions and Registry
 # ------------------------------------------------------------------------------
 
-# Define the schema for the 'tell_a_joke' function for the Gemini API
-tell_a_joke_declaration = types.FunctionDeclaration(
-    name="tell_a_joke",
-    description="Tells a joke to the user, optionally about a specific topic.",
-    parameters=types.Schema(
-        type=types.Type.OBJECT,
-        properties={
-            "topic": types.Schema(
-                type=types.Type.STRING,
-                description="The topic of the joke (e.g., programming, science, dad)."
-            )
-        }
-    )
-)
-
 control_light_declaration = types.FunctionDeclaration(
     name="control_light",
     description="Controls smart light bulbs. Can control Yeelight (default) or Tapo lights in specific locations like 'living room'. You can turn lights on or off, adjust brightness, set color (RGB), or color temperature (Kelvin).",
@@ -287,17 +321,34 @@ change_persona_declaration = types.FunctionDeclaration(
     ),
 )
 
+
+update_system_prompt_declaration = types.FunctionDeclaration(
+    name="update_system_prompt",
+    description="Intelligently updates the system prompt of the current persona based on a high-level request. Use this to modify the persona's personality, rules, or instructions.",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "update_request": types.Schema(
+                type=types.Type.STRING,
+                description="A description of the change to make to the system prompt (e.g., 'Make the persona a little more sarcastic' or 'Add a rule that it must always greet the user by name')."
+            )
+        },
+        required=["update_request"],
+    ),
+)
+
+
 tool_schemas = [
-    tell_a_joke_declaration,
     control_light_declaration,
     change_persona_declaration,
+    update_system_prompt_declaration,
 ]
 
 # --- Tool Registry ---
 # A mapping of tool names to their actual Python function implementations.
 # This allows the GeminiService to dynamically call the correct function.
 available_tools = {
-    "tell_a_joke": tell_a_joke,
     "control_light": control_light,
     "change_persona": change_persona,
+    "update_system_prompt": update_system_prompt,
 }

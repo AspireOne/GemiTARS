@@ -53,7 +53,7 @@ class Config:
     # Hotword Detection
     HOTWORD_INFERENCE_FRAMEWORK = _inference_framework
     # Omit "alexa" for now - needs to somehow be downloaded to the openwakeword cache.
-    HOTWORD_MODELS = [hey_tars_path, tars_path]
+    HOTWORD_MODELS = [alexa_path]
     HOTWORD_THRESHOLD = float(os.getenv('HOTWORD_THRESHOLD', '0.1'))  # OpenWakeWord's default is 0.5. Will need to be adjusted with the specific raspberry pi mic.
     HOTWORD_BUFFER_SECONDS = 1.4  # How long does it take to say? + buffer | TODO: Revise
     HOTWORD_REDETECTION_TIMEOUT_SECONDS = 2  # Timeout to prevent immediate re-detection

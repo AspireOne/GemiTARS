@@ -12,3 +12,4 @@ yeelight
 gpiozero
 pigpio
 tapo
+pydantic
