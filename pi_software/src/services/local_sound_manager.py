@@ -5,6 +5,7 @@ Local Sound Manager: Handles loading and management of local audio files.
 import os
 import soundfile as sf
 import numpy as np
+from scipy.signal import resample_poly
 from typing import Dict, Optional
 from ..config.settings import Config
 from ..utils.logger import setup_logger
@@ -41,15 +42,19 @@ class LocalSoundManager:
                     continue
                 
                 try:
-                    # Read WAV file and convert to target format
-                    audio_data, samplerate = sf.read(
-                        file_path,
-                        dtype=Config.AUDIO_DTYPE,
-                        channels=Config.AUDIO_CHANNELS,
-                        samplerate=Config.AUDIO_SAMPLE_RATE,
-                        always_2d=False
-                    )
-                    
+                    # Read WAV file as is
+                    audio_data, samplerate = sf.read(file_path, dtype=Config.AUDIO_DTYPE)
+
+                    # Convert to mono if necessary
+                    if audio_data.ndim > 1 and audio_data.shape[1] > 1:
+                        audio_data = np.mean(audio_data, axis=1).astype(Config.AUDIO_DTYPE)
+
+                    # Resample if necessary
+                    if samplerate != Config.AUDIO_SAMPLE_RATE:
+                        num_samples = int(len(audio_data) * Config.AUDIO_SAMPLE_RATE / samplerate)
+                        audio_data = resample_poly(audio_data, Config.AUDIO_SAMPLE_RATE, samplerate, window=('kaiser', 4.0))[:num_samples]
+                        audio_data = audio_data.astype(Config.AUDIO_DTYPE)
+
                     # Convert numpy array to raw bytes
                     raw_audio_data = audio_data.tobytes()
                     
