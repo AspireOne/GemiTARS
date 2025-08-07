@@ -215,6 +215,38 @@ class SettingsManager:
             self._apply_dynamic_values()
             self.logger.debug("Updated model paths due to framework change")
 
+    def log_config(self, logger):
+        """Logs the current configuration with long values truncated for readability."""
+        logger.info("--- Pi Configuration ---")
+        for key, value in self.config.items():
+            # Skip internal/computed values from display
+            if key.startswith('_'):
+                continue
+                
+            # Truncate long string values for readability
+            if isinstance(value, str) and len(value) > 80:
+                log_value = f"'{value[:77]}...'"
+            elif isinstance(value, list) and len(str(value)) > 80:
+                # For lists like HOTWORD_MODELS, show count and first item
+                if value:
+                    log_value = f"[{len(value)} items: '{str(value[0])[:40]}...']"
+                else:
+                    log_value = "[]"
+            else:
+                log_value = value
+            logger.info(f"  {key}: {log_value}")
+        
+        # Show model paths if available
+        if '_MODEL_PATHS' in self.config:
+            logger.info("--- Available Model Paths ---")
+            for model_name, path in self.config['_MODEL_PATHS'].items():
+                logger.info(f"  {model_name}: {path}")
+        
+        logger.info("--- Override File ---")
+        logger.info(f"  Path: {self.override_file_path}")
+        logger.info(f"  Active overrides: {list(self.override_config.keys()) if self.override_config else 'None'}")
+        logger.info("---------------------------")
+
     def __getattr__(self, name):
         """Allows accessing configuration values as attributes."""
         # Avoid recursion during initialization by checking if config exists

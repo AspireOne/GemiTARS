@@ -29,6 +29,9 @@ async def main():
     """Main application entry point."""
     logger.info("Starting GemiTARS Pi Client...")
     
+    # Log current configuration for debugging
+    Config.log_config(logger)
+    
     # Initialize components
     state_machine = StateMachine()
     audio_manager = get_audio_manager()
