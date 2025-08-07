@@ -68,6 +68,9 @@ class TARSAssistant:
             for phrase in Config.SESSION_END_PHRASES
         ]
         
+        # Log the configuration
+        Config.log_config(logger)
+        
     async def run(self) -> None:
         """Main TARS assistant execution loop."""
         logger.info("TARS Assistant starting...")

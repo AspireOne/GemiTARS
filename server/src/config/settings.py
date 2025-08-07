@@ -272,6 +272,30 @@ class SettingsManager:
         """Return the name of the currently active persona."""
         return self.active_persona_name
 
+    def log_config(self, logger):
+        """Logs the current configuration with long values truncated for readability."""
+        logger.info("--- Configuration ---")
+        for key, value in self.config.items():
+            # Truncate the main system prompt if it's in the general config
+            if key == 'SYSTEM_PROMPT' and isinstance(value, str) and len(value) > 80:
+                log_value = f"'{value[:77]}...'"
+            else:
+                log_value = value
+            logger.info(f"  {key}: {log_value}")
+
+        logger.info("--- Available Personas ---")
+        for name, persona_details in self.personas.items():
+            prompt = persona_details.get('system_prompt', '')
+            if len(prompt) > 80:
+                truncated_prompt = f"'{prompt[:77]}...'"
+            else:
+                truncated_prompt = f"'{prompt}'"
+            voice_id = persona_details.get('voice_id', 'N/A')
+            logger.info(f"  - {name}:")
+            logger.info(f"    voice_id: {voice_id}")
+            logger.info(f"    system_prompt: {truncated_prompt}")
+        logger.info("---------------------------------")
+
     def _ensure_personas_file_exists(self):
         """
         Ensure that personas.json exists in the local directory.
