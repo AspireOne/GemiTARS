@@ -41,16 +41,13 @@ class DefaultConfig:
     # These phrases will be sanitized at runtime to match transcript sanitization
     SESSION_END_PHRASES = [
         # Czech phrases
-        "díky", "děkuji", "děkuju", "to je všechno", "to je všechno díky", "na shledanou", "měj se",
-        "drž hubu", "pakuj do píči", "díky moc", "díky ti", "díky tars", "to je vše", "končím", "konec",
-        "sbohem", "měj se hezky", "měj se fajn", "čau", "čauky", "nazdar", "zatím", "pa", "papa",
+        "díky", "děkuji", "děkuju", "to je všechno", "na shledanou",
+        "drž hubu", "pakuj do píči", "díky moc", "to je vše", "konec",
         
         # English phrases   
-        "thank you", "thanks", "okay thanks", "okay bye", "okay goodbye", "bye", "goodbye", "we're done here",
-        "we are done here", "that'll be all", "that will be all", "stand down", "end of transmission", "shut up",
-        "see you", "see ya", "later", "talk to you later", "end session", "end conversation", "disconnect",
-        "terminate", "stop listening", "stop", "that's all", "that's it", "done", "finished", "enough",
-        "no more", "exit", "close", "abort", "over and out"
+        "thank you", "thanks", "okay thanks", "okay bye", "goodbye",
+         "shut up", "see you", "see ya", "talk to you later", "end session", "end conversation", "disconnect",
+        "terminate", "stop listening", "that's all"
     ]
     
     # ElevenLabs TTS Settings (non-persona specific)
