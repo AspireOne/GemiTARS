@@ -28,6 +28,8 @@ This file provides overview and high level goals/features and architecture of th
 
 - **Robust State Management**: Comprehensive state machines on both client and server manage conversation flow (passive → active → processing → speaking).
 
+- **Dynamic Configuration & Personas**: Features a multi-layered configuration system (`defaults` → `.env` → `config_override.json` → `personas.json`) for flexible setup. Supports multiple AI personalities (personas) with distinct voices and system prompts, which can be created and switched dynamically during conversation via tool calls.
+ 
 - **Real-time Audio Streaming**: Bidirectional audio with proper synchronization and playback completion handshakes.
 
 ### Planned Features 🔮
