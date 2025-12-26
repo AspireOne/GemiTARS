@@ -53,24 +53,24 @@ External sources for reference:
 ### Pinout Schema
 
 ```
+
 INMP441 Microphone #1 (Single/Mono for now):
-VDD → Pin 1 (3.3V)
-GND → Pin 6 (Ground)
-SCK → Pin 12 (GPIO 18 - I2S BCK) [shared with amp]
-WS → Pin 35 (GPIO 19 - I2S LRCK) [shared with amp]
-SD → Pin 38 (GPIO 20 - I2S DIN) // Input data from mic
-L/R → GND (e.g., Pin 9) // Set to low for mono/left channel (or tie to 3.3V if preferred)
+SCK: GPIO 18 (shared with amplifier's BCLK)
+WS: GPIO 19 (shared with amplifier'S LRC)
+L/R: ground // Set to low for mono/left channel (or tie to 3.3V if preferred)
+GND: ground
+VDD: 3.3V
+SD: GPIO 20 (PCM_DIN)
 
 MAX98357A I2S Amplifier (for Speaker):
-VIN → Pin 2 or 4 (5V) // Use 5V for better power; 3.3V if low-volume is OK
-GND → Pin 14 (Ground)
-BCLK → Pin 12 (GPIO 18 - I2S BCK) [shared with mic]
-LRC → Pin 35 (GPIO 19 - I2S LRCK) [shared with mic]
-DIN → Pin 40 (GPIO 21 - I2S DOUT) // Output data to amp
-SD → Pin 15 (GPIO 22 - Shutdown, optional: tie high for always-on, or use for power saving)
-GAIN → Leave floating (default 9dB gain) or tie to GND for adjustment
-Speaker + → Amp's + output pin
-Speaker - → Amp's - output pin // Connect your 3W 4Ω speaker here
+Vin: 5V // Use 5V for better power; 3.3V if low-volume is OK
+GND: ground
+SD: floating // tie high for always-on(3.3v), or floating (self-managed) for power saving
+GAIN: floating // (default 9dB gain) or tie to GND for adjustment
+DIN: GPIO 21 (PCM_DOUT, pin 40) // Output data to amp
+BCLK: GPIO 18 (PCM_CLK, pin 12, shared with mic's SCK)
+LRC: GPIO 19 (PCM_FS, pin 35, shared with mic's WS)
+*Note: make sure to scew the screws on the green connector on the amplifier (the + - ones for speaker) so they arent loose.
 
 SPI Display (e.g., 0.96" OLED):
 VCC → Pin 17 (3.3V)
