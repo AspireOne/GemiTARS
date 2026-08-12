@@ -1,3 +1,5 @@
+
+
 # GemiTARS: A replica of TARS from Interstellar
 
 A replica of TARS from Interstellar, featuring continuous conversations powered by Gemini Live API. Uses a distributed architecture with a compact Raspberry Pi Zero 2W "head" for local wake word detection and I/O, while a powerful server "brain" manages AI processing, state management, and other processing, enabling rich voice interactions.
@@ -8,7 +10,7 @@ This file provides overview and high level goals/features and architecture of th
 
 - [`server/`](server/): Server/processing hub code
 - [`pi_software/`](pi_software/): Raspberry Pi client code
-- [`docs/external/`](docs/external_docs/): External API documentation
+- [`docs/external_docs/`](docs/external_docs/): External API documentation
 - [`docs/system_architecture.md`](docs/system_architecture.md): Detailed technical architecture
 - [`resources/tars_voice_clips`](resources/tars_voice_clips): all TARS voice segments extracted from Interstellar.
 
